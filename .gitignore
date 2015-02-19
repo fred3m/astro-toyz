@@ -1,0 +1,6 @@
+*.pyc
+*.egg
+
+build
+toyz.egg-info
+dist
