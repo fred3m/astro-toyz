@@ -1,36 +1,39 @@
 """
 Tasks that can be run from a Toyz web application
 """
+# Copyright 2015 by Fred Moolekamp
+# License: LGPLv3
 from __future__ import division,print_function
 
 from toyz.utils import core
 from toyz.utils.errors import ToyzJobError
+import astro_toyz as astro
 
-def sample_function(toyz_settings, tid, params):
+def get_img_info(toyz_settings, pipe, tid, params):
     """
-    Sample function that can be run by a Toyz web application. All task function must have the
-    following parameters (and only the following parameters) and a response
-    
-    Parameters
-        - toyz_settings ( :py:class:`toyz.utils.core.ToyzSettings`): Settings for the toyz 
-          application
-        - tid (*string* ): Task ID of the client user running the task
-        - params (*dict* ): Any parameters sent by the client (see *params* below)
-    
-    Response
-        - id: 'sample_function'
-        - Additional keys can also be listed in the response for information passed to the client
+    Get image info specific to astronomy FITS images (like physical coords, wcs, etc.)
     """
-    # Check to make sure that the user has specified all mandatory parameters
-    core.check4keys(params, ['x', 'y', 'z'])
-    x = params['x']
-    y = params['y']
-    z = params['z']
+    core.check4keys(params, ['file_info', 'img_info'])
     response = {
-        'id': 'sample_function',
-        'sum': x+y+z,
-        'product': x*y*z,
-        'mean': (x+y+z)/3
+        'id': 'get_img_info',
+        'img_info': astro.viewer.get_img_info(**params)
     }
-    
     return response
+
+def get_img_data(toyz_settings, pipe, tid, params):
+    """
+    Get data from an image or FITS file
+    """
+    core.check4keys(params, ['data_type', 'file_info', 'img_info'])
+    response = astro.viewer.get_img_data(**params)
+    return response
+
+def get_2d_fit(toyz_settings, pipe, tid, params):
+    """
+    Get desired fit for 2d data array
+    """
+    import numpy as np
+    core.check4keys(params, ['file_info', 'fit_type', 'x', 'y', 'width', 'height'])
+    response = astro.viewer.get_2d_fit(**params)
+    return response
+    
