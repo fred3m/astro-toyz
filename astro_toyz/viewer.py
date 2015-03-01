@@ -38,7 +38,7 @@ def get_img_data(data_type, file_info, img_info, **kwargs):
     # mean position of the fit
     response = {}
     if 'fit_type' in kwargs:
-        fit_response = get_2d_fit_type(
+        fit_response = get_2d_fit(
             file_info, kwargs['fit_type'], kwargs['x'], kwargs['y'], 
             kwargs['width'], kwargs['height'])
         if fit_response['status']=='success':
@@ -78,7 +78,7 @@ def get_img_info(file_info, img_info, **kwargs):
         }
     return img_info
 
-def get_2d_fit_type(file_info, fit_type, x, y, width, height):
+def get_2d_fit(file_info, fit_type, x, y, width, height):
     hdulist = toyz.web.viewer.get_file(file_info)
     wcs = get_wcs(file_info, hdulist)
     hdu = hdulist[int(file_info['frame'])]

@@ -16,6 +16,14 @@
 .astro-viewer-ctrl-detect {
     background-image:url(/toyz/static/astro_toyz/icons/detect.png);
 }
+.astro-viewer-ctrl-visibility{
+    background-position:center;
+    background-repeat:no-repeat;
+    background-size:80%;
+    height: 15px;
+    width: 15px;
+    cursor:pointer;
+}
 .astro-viewer-ctrl-visible {
     background-image:url(/toyz/static/astro_toyz/icons/visible.png);
 }
@@ -31,6 +39,6 @@
 .astro-viewer-ctrl-deletestar {
     background-image:url(/toyz/static/astro_toyz/icons/deletestar.png);
 }
-.astro-viewer-ctrl-querystar {
-    background-image:url(/toyz/static/astro_toyz/icons/querystar.png);
+.astro-viewer-catalog-ctrl {
+    float: left;
 }

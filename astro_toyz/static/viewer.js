@@ -17,8 +17,15 @@ Toyz.Astro.Viewer.load_dependencies = function(callback){
         console.log('Loading Template dependencies');
         Toyz.Core.load_dependencies(
             {
-                js:["/toyz/static/astro_toyz/astro.js"],
-                css: ["/toyz/static/astro_toyz/astro.css"]
+                js:[
+                    "/toyz/static/astro_toyz/astro.js",
+                    "/toyz/static/astro_toyz/catalog.js",
+                    "/toyz/static/astro_toyz/spectrum.js"
+                ],
+                css: [
+                    "/toyz/static/astro_toyz/astro.css",
+                    "/toyz/static/astro_toyz/spectrum.css"
+                ]
             },
             function(){
                 console.log('Astro-Toyz Viewer dependencies loaded');
@@ -63,8 +70,14 @@ Toyz.Astro.Viewer.Controls = function(options){
         input_class: 'viewer-ctrl-info-btn viewer-ctrl-info-coord-div',
         events: {
             rx_datapoint: function(event){
-                var wcs = new Toyz.Astro.Utils.World(event.ra, event.dec);
-                this.ctrl_panel.gui.params.ra.$input.text(wcs.get_ra());
+                var ra;
+                if(!isNaN(event.ra) && !isNaN(event.dec)){
+                    var wcs = new Toyz.Astro.Utils.World(event.ra, event.dec);
+                    ra = wcs.get_ra();
+                }else{
+                    ra = '';
+                };
+                this.ctrl_panel.gui.params.ra.$input.text(ra);
             }.bind(options.parent)
         }
     };
@@ -74,8 +87,14 @@ Toyz.Astro.Viewer.Controls = function(options){
         input_class: 'viewer-ctrl-info-btn viewer-ctrl-info-coord-div',
         events: {
             rx_datapoint: function(event){
-                var wcs = new Toyz.Astro.Utils.World(event.ra, event.dec);
-                this.ctrl_panel.gui.params.dec.$input.text(wcs.get_dec());
+                var dec;
+                if(!isNaN(event.ra) && !isNaN(event.dec)){
+                    var wcs = new Toyz.Astro.Utils.World(event.ra, event.dec);
+                    dec = wcs.get_dec();
+                }else{
+                    dec = '';
+                };
+                this.ctrl_panel.gui.params.dec.$input.text(dec);
             }.bind(options.parent)
         }
     };
@@ -202,7 +221,8 @@ Toyz.Astro.Viewer.Controls = function(options){
         }
     };
     this.select_star = {
-        input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn astro-viewer-ctrl-selectstar',
+        input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn ' +
+                    'astro-viewer-ctrl-selectstar',
         func: {
             click: function(event){
                 this.change_active_tool('select_star', event.currentTarget);
@@ -240,10 +260,59 @@ Toyz.Astro.Viewer.Controls = function(options){
             click: function(event){
                 this.change_active_tool('add_star', event.currentTarget);
             }.bind(options.parent)
-        } 
+        },
+        events: {
+            mousedown: function(event){
+                if(this.tools.active_tool=='add_star'){
+                    var catalog = this.catalog_dialog.get_current_catalog();
+                    if(catalog!==undefined){
+                        var file_info = this.frames[this.viewer_frame].file_info;
+                        var img_info = file_info.images[file_info.frame];
+                        var x = event.target.offsetLeft+event.offsetX;
+                        var y = event.target.offsetTop+event.offsetY;
+                        var xy = this.extract_coords(event, img_info);
+                        var x = xy[0];
+                        var y = xy[1];
+                        this.workspace.websocket.send_task({
+                            task: {
+                                module: 'astro_toyz.tasks',
+                                task: 'get_2d_fit',
+                                parameters: {
+                                    file_info: file_info,
+                                    x: x,
+                                    y: y,
+                                    width: 20,
+                                    height: 20,
+                                    fit_type: 'elliptical_gaussian'
+                                }
+                            },
+                            callback: function(catalog, result){
+                                if(result.status=='success'){
+                                    // If the source has an ra amd dec then convert those 
+                                    // into strings
+                                    if(result.fit.hasOwnProperty('ra') && 
+                                        result.fit.hasOwnProperty('dec')
+                                    ){
+                                        var wcs = new 
+                                            Toyz.Astro.Utils.World(result.fit.ra, result.fit.dec);
+                                        result.fit.ra = wcs.get_ra();
+                                        result.fit.dec = wcs.get_dec();
+                                    };
+                                    console.log('catalog before update', catalog);
+                                    catalog.add_src(result.fit);
+                                }else{
+                                    alert(result.status)
+                                };
+                            }.bind(this, catalog)
+                        })
+                    };
+                };
+            }.bind(options.parent)
+        }
     };
     this.delete_star = {
-        input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn astro-viewer-ctrl-deletestar',
+        input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn '+
+                    'astro-viewer-ctrl-deletestar',
         prop: {
             type: 'image',
             title: 'delete point source from catalog',
@@ -252,19 +321,6 @@ Toyz.Astro.Viewer.Controls = function(options){
         func: {
             click: function(event){
                 this.change_active_tool('delete_star', event.currentTarget);
-            }.bind(options.parent)
-        } 
-    };
-    this.query_star = {
-        input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn astro-viewer-ctrl-querystar',
-        prop: {
-            type: 'image',
-            title: 'query point source in online catalogs',
-            value: ''
-        },
-        func: {
-            click: function(event){
-                this.change_active_tool('query_star', event.currentTarget);
             }.bind(options.parent)
         } 
     };
@@ -277,6 +333,7 @@ Toyz.Astro.Viewer.Controls = function(options){
         },
         func: {
             click: function(){
+                this.catalog_dialog.$div.dialog('open');
             }.bind(options.parent)
         } 
     };
@@ -320,8 +377,7 @@ Toyz.Astro.Viewer.Contents = function(params){
             Zoom: ['zoom_out', 'zoom_in', 'zoom_bestfit', 'zoom_fullsize', 'zoom_input'],
             Tools: ['rect', 'center', 'hist', 'surface', 'colormap'],
             'Catalog Tools': [
-                'catalog', 'detect_stars', 'select_star', 'add_star', 'delete_star',
-                'query_star'
+                'catalog', 'detect_stars', 'select_star', 'add_star', 'delete_star'
             ],
             'Image Info': ['img_coords', 'physical_coords', 'ra', 'dec', 'pixel_val']
         }
@@ -333,6 +389,7 @@ Toyz.Astro.Viewer.Contents = function(params){
     };
     Toyz.Viewer.Contents.call(this, params);
     this.type = 'astro_viewer';
+    this.catalog_dialog = new Toyz.Astro.Catalog.Dialog(this.dialog_options);
 };
 Toyz.Astro.Viewer.Contents.prototype = new Toyz.Viewer.Contents();
 Toyz.Astro.Viewer.Contents.prototype.onmousemove = function(){
