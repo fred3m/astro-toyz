@@ -10,7 +10,8 @@ from toyz.web import session_vars
 import astropy.wcs as pywcs
 import astropy.io.fits as pyfits
 import numpy as np
-import astro_toyz as astro
+import astrotoyz as astro
+import astrotoyz.core
 
 def get_wcs(file_info, hdulist):
     """
@@ -78,7 +79,7 @@ def get_img_info(file_info, img_info, **kwargs):
         }
     return img_info
 
-def get_2d_fit(file_info, fit_type, x, y, width, height):
+def get_2d_fit(file_info, fit_type, x, y, width, height, **kwargs):
     hdulist = toyz.web.viewer.get_file(file_info)
     wcs = get_wcs(file_info, hdulist)
     hdu = hdulist[int(file_info['frame'])]
@@ -101,7 +102,7 @@ def get_2d_fit(file_info, fit_type, x, y, width, height):
     param_map = astro.detect_sources.fit_dtypes[fit_type]
     
     if len(param_map)!=len(fit):
-        raise ToyzJobError("Fit parameters did not match parameter map")
+        raise astrotoyz.core.AstroToyzError("Fit parameters did not match parameter map")
     if len(fit)>0:
         params = {value[0]:fit[n] for n, value in enumerate(param_map)}
         print('params', params)

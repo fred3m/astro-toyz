@@ -18,13 +18,13 @@ Toyz.Astro.Viewer.load_dependencies = function(callback){
         Toyz.Core.load_dependencies(
             {
                 js:[
-                    "/toyz/static/astro_toyz/astro.js",
-                    "/toyz/static/astro_toyz/catalog.js",
-                    "/toyz/static/astro_toyz/spectrum.js"
+                    "/toyz/static/astrotoyz/astro.js",
+                    "/toyz/static/astrotoyz/catalog.js",
+                    "/toyz/static/astrotoyz/spectrum.js"
                 ],
                 css: [
-                    "/toyz/static/astro_toyz/astro.css",
-                    "/toyz/static/astro_toyz/spectrum.css"
+                    "/toyz/static/astrotoyz/astro.css",
+                    "/toyz/static/astrotoyz/spectrum.css"
                 ]
             },
             function(){
@@ -275,31 +275,32 @@ Toyz.Astro.Viewer.Controls = function(options){
                         var y = xy[1];
                         this.workspace.websocket.send_task({
                             task: {
-                                module: 'astro_toyz.tasks',
-                                task: 'get_2d_fit',
+                                module: 'astrotoyz.tasks',
+                                task: 'add_src',
                                 parameters: {
                                     file_info: file_info,
-                                    x: x,
-                                    y: y,
-                                    width: 20,
-                                    height: 20,
-                                    fit_type: 'elliptical_gaussian'
+                                    src_info: {
+                                        x: x,
+                                        y: y,
+                                    },
+                                    fit_type: 'elliptical_gaussian',
+                                    cid: catalog.cid
                                 }
                             },
                             callback: function(catalog, result){
                                 if(result.status=='success'){
                                     // If the source has an ra amd dec then convert those 
                                     // into strings
-                                    if(result.fit.hasOwnProperty('ra') && 
-                                        result.fit.hasOwnProperty('dec')
+                                    if(result.src.hasOwnProperty('ra') && 
+                                        result.src.hasOwnProperty('dec')
                                     ){
                                         var wcs = new 
-                                            Toyz.Astro.Utils.World(result.fit.ra, result.fit.dec);
-                                        result.fit.ra = wcs.get_ra();
-                                        result.fit.dec = wcs.get_dec();
+                                            Toyz.Astro.Utils.World(result.src.ra, result.src.dec);
+                                        result.src.ra = wcs.get_ra();
+                                        result.src.dec = wcs.get_dec();
                                     };
                                     console.log('catalog before update', catalog);
-                                    catalog.add_src(result.fit);
+                                    catalog.add_src(result.src);
                                 }else{
                                     alert(result.status)
                                 };
@@ -322,7 +323,7 @@ Toyz.Astro.Viewer.Controls = function(options){
             click: function(event){
                 this.change_active_tool('delete_star', event.currentTarget);
             }.bind(options.parent)
-        } 
+        }
     };
     this.catalog = {
         input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn astro-viewer-ctrl-catalog',
@@ -389,6 +390,9 @@ Toyz.Astro.Viewer.Contents = function(params){
     };
     Toyz.Viewer.Contents.call(this, params);
     this.type = 'astro_viewer';
+    this.dialog_options = $.extend(true, {
+        workspace: this.workspace
+    }, this.dialog_options);
     this.catalog_dialog = new Toyz.Astro.Catalog.Dialog(this.dialog_options);
 };
 Toyz.Astro.Viewer.Contents.prototype = new Toyz.Viewer.Contents();
@@ -406,7 +410,7 @@ Toyz.Astro.Viewer.Contents.prototype.onmousemove = function(){
             var y = Math.round(xy[1]/img_info.scale);
             this.workspace.websocket.send_task({
                 task: {
-                    module: 'astro_toyz.tasks',
+                    module: 'astrotoyz.tasks',
                     task: 'get_img_data',
                     parameters: {
                         data_type: 'datapoint',
@@ -431,7 +435,7 @@ Toyz.Astro.Viewer.Contents.prototype.get_img_tiles = function(viewer_frame, file
     if(!img_info.hasOwnProperty('coord_range')){
         this.workspace.websocket.send_task({
             task: {
-                module: 'astro_toyz.tasks',
+                module: 'astrotoyz.tasks',
                 task: 'get_img_info',
                 parameters: {
                     file_info: file_info,
@@ -999,7 +1003,7 @@ Toyz.Astro.Viewer.SurfaceDialog.prototype.update = function(update){
         var width = this.plot_width;
         this.parent.workspace.websocket.send_task({
             task: {
-                module: 'astro_toyz.tasks',
+                module: 'astrotoyz.tasks',
                 task: 'get_img_data',
                 parameters: {
                     file_info: file_info,

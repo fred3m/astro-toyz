@@ -49,46 +49,69 @@ Toyz.Astro.Catalog.colorpicker_defaults = function(options){
 };
 
 Toyz.Astro.Catalog.Catalog = function(options){
+    if(!options.hasOwnProperty('cid')){
+        throw Error("A catalog must be initialized with a 'cid' field");
+    };
     options = $.extend(true, {
         dataframe:{
-            data: [],
+            index: ['id']
         },
-        ra_colname: 'ra',
-        dec_colname: 'dec',
-        changes: [],
-        filepath: undefined,
-        name: 'untitled',
-        visible: true
+        settings: {
+            web: {
+                visible: true,
+            },
+            file_info: {
+                filepath: '',
+                file_type: '',
+                file_settings: {}
+            },
+            data: {
+                ra_name: 'ra',
+                dec_name: 'dec',
+                id_name: 'id',
+                min_sep: {
+                    wcs: [1,'arcsec'],
+                    px: 5
+                }
+            }
+        },
+        changes: []
     }, options);
+    
     this.update(options);
 };
 Toyz.Astro.Catalog.Catalog.prototype.update = function(update){
     var redraw_catalog = false;
     if(update.hasOwnProperty('dataframe')){
-        if(!update.dataframe.hasOwnProperty('index_cols')){
-            if(update.hasOwnProperty('ra_colname')){
-                this.ra_colname = update.ra_colname;
+        // Create the dataframe if it doesn't exist yet
+        if(!this.hasOwnProperty('dataframe')){
+            if(!update.dataframe.hasOwnProperty('index')){
+                if(update.hasOwnProperty('ra_colname')){
+                    this.ra_colname = update.ra_colname;
+                };
+                if(update.hasOwnProperty('dec_colname')){
+                    this.dec_colname = update.dec_colname;
+                };
+                update.index = [this.ra_colname, this.dec_colname];
             };
-            if(update.hasOwnProperty('dec_colname')){
-                this.dec_colname = update.dec_colname;
-            };
-            update.index_cols = [this.ra_colname, this.dec_colname];
+            this.dataframe = new Toyz.Core.Dataframe(update.dataframe);
+        }else{
+            this.dataframe.update(update.dataframe);
         };
-        this.dataframe = new Toyz.Core.Dataframe(update.dataframe);
+        redraw_catalog = true;
         delete update.dataframe;
     };
-    if(update.hasOwnProperty('marker')){
-        redraw_catalog = true;
-    };
-    if(update.hasOwnProperty('filepath')){
-        if(update.filepath!==undefined){
-            // TODO: load catalog dataframe from filename here
+    if(update.hasOwnProperty('settings')){
+        this.settings = $.extend(true, this.settings, update.settings);
+        if(update.settings.hasOwnProperty('marker')){
+            redraw_catalog = true;
         };
+        delete update.settings;
     };
     for(var u in update){
         this[u] = update[u];
     };
-    // If the marker properties have been changed, redraw the catalog
+    // If the catalog data or marker properties have been changed, redraw the catalog
     if(redraw_catalog==true){
         if(this.hasOwnProperty('viewer')){
             this.redraw();
@@ -103,22 +126,13 @@ Toyz.Astro.Catalog.Catalog.prototype.add_src = function(src_info){
             delete src_info[prop];
         };
     };
-    if(!src_info.hasOwnProperty('id') && this.dataframe.columns.indexOf('id')>-1){
-        if(src_info.hasOwnProperty('ra') && src_info.hasOwnProperty('dec')){
-            src_info.id = src_info.ra+','+src_info.dec;
-        }else{
-            src_info.id = Toyz.Core.round(src_info.x,2)+','+Toyz.Core.round(src_info.y,2);
-        };
-    };
     this.changes.push({
         action: 'add_src',
         info: src_info
     });
     this.dataframe.add_row(src_info);
     console.log('catalog after add', this);
-    for(var i=0;i<this.dataframe.data.length; i++){
-        console.log('row',i,":", this.dataframe.get_row(this.dataframe.data[i][0]));
-    };
+    console.log('changes:', this.changes);
 };
 Toyz.Astro.Catalog.Catalog.prototype.delete_src = function(row_ids){
     this.changes.push({
@@ -126,6 +140,8 @@ Toyz.Astro.Catalog.Catalog.prototype.delete_src = function(row_ids){
         info: row_ids
     });
     this.dataframe.delete_row(row_ids);
+    console.log('catalog after delete', this);
+    console.log('changes:', this.changes);
 };
 
 Toyz.Astro.Catalog.Dialog = function(options){
@@ -135,6 +151,7 @@ Toyz.Astro.Catalog.Dialog = function(options){
     this.$div = $('<div/>');
     this.cat_index = 0;
     this.catalogs = [];
+    this.workspace = options.workspace;
     var controls = $.extend(true, {
         type: 'div',
         params: {
@@ -193,17 +210,20 @@ Toyz.Astro.Catalog.Dialog = function(options){
                             },
                             init: function(new_item){
                                 var cat_name = 'cat-'+this.catalogs.length;
-                                this.catalogs.push(new Toyz.Astro.Catalog.Catalog({
+                                // Create new Catalog
+                                var catalog = new Toyz.Astro.Catalog.Catalog({
                                     name: cat_name,
-                                    id: cat_name,
+                                    cid: cat_name,
                                     dataframe: {
                                         columns: ['id','ra','dec','x','y'],
-                                        index_cols: ['id'],
+                                        index: ['id'],
                                         data: []
                                     }
-                                }));
-                                new_item.cat_id = cat_name;
+                                });
+                                this.catalogs.push(catalog);
+                                new_item.cid = cat_name;
                                 this.cat_index = this.catalogs.length-1;
+                                // Update dialog parameters
                                 new_item.params.cat_name.$input.val(cat_name);
                                 new_item.params.colorpicker.$input = $('<input/>')
                                     .prop('type','text');
@@ -216,6 +236,25 @@ Toyz.Astro.Catalog.Dialog = function(options){
                                     }.bind(this)
                                 });
                                 new_item.params.colorpicker.$input.spectrum(defaults);
+                                // Add the catalog to the server (necessary to select sources,
+                                // add/delete sources, and save the catalog)
+                                console.log('catalog', catalog);
+                                this.workspace.websocket.send_task({
+                                    task: {
+                                        module: 'astrotoyz.tasks',
+                                        task: 'create_catalog',
+                                        parameters: {
+                                            settings: catalog.settings,
+                                            cid: catalog.cid,
+                                            dataframe: catalog.dataframe,
+                                            name: catalog.name
+                                        }
+                                    },
+                                    callback: function(catalog, result){
+                                        console.log('result', result)
+                                        catalog.update(result.cat_info)
+                                    }.bind(this, catalog)
+                                });
                             }.bind(this)
                         }
                     },
@@ -325,7 +364,7 @@ Toyz.Astro.Catalog.Dialog.prototype.get_current_catalog = function(){
     var param = this.gui.params.catalogs.get_selected_param();
     //console.log('selected param', param);
     for(var i=0; i<this.catalogs.length; i++){
-        if(this.catalogs[i].id==param.cat_id){
+        if(this.catalogs[i].cid==param.cid){
             return this.catalogs[i];
         }
     };

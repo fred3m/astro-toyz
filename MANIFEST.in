@@ -6,6 +6,6 @@ recursive-include scripts *
 
 exclude *.pyc *.o
 
-recursive-include astro_toyz *
+recursive-include astrotoyz *
 exclude .git
 exclude .gitignore

@@ -6,7 +6,7 @@ from setuptools import setup
 from setuptools import find_packages
 
 # Package info
-PACKAGE_NAME = "astro_toyz"
+PACKAGE_NAME = "astrotoyz"
 DESCRIPTION = "Astronomy tools built on the Toyz framework"
 LONG_DESC = "GUI built on toyz framework to use astropy and more"
 AUTHOR = "Fred Moolekamp"

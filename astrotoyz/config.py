@@ -24,7 +24,7 @@ workspace_tiles = {
     'astro_viewer': {
         'name': 'Astro Viewer', # Name of the tile to show up in the workspace tiles list
         'namespace': 'Toyz.Astro.Viewer', # Namespace of the template (to check for dependencies)
-        'url': '/toyz/static/astro_toyz/viewer.js' # Javascript file to load
+        'url': '/toyz/static/astrotoyz/viewer.js' # Javascript file to load
     }
 }
 
