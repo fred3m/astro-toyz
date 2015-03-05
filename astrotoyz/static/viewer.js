@@ -352,7 +352,52 @@ Toyz.Astro.Viewer.Controls = function(options){
         },
         func: {
             click: function(){
-                this.detect_dialog.$div.dialog('open');
+                //this.detect_dialog.$div.dialog('open');
+                var file_info = $.extend(true,{},this.frames[this.viewer_frame].file_info);
+                var img_info = file_info.images[file_info.frame];
+                file_info = {
+                    filepath: file_info.filepath,
+                    frame: file_info.frame
+                };
+                // Make room for the new catalog
+                //var cid = 'cat-'+this.catalog_dialog.cat_idx;
+                //this.catalog_dialog.catalog_idx++;
+                this.catalog_dialog.gui.params.catalogs.buttons.add.$input.click();
+                
+                //return
+                var catalog = this.catalog_dialog.get_current_catalog();
+                var cid = catalog.cid;
+                // Detect sources and create a catalog
+                console.log('cid', cid);
+                this.workspace.websocket.send_task({
+                    task: {
+                        module: 'astrotoyz.tasks',
+                        task: 'detect_sources',
+                        parameters: {
+                            file_info: file_info,
+                            cid: cid,
+                            settings: {
+                                aperture_type: 'radius',
+                                maxima_size: 5,
+                                maxima_sigma: 2,
+                                aperture_radii: [5],
+                                threshold: 19,
+                                saturate: 40000,
+                                fit_method: 'elliptical_moffat'
+                            }
+                        }
+                    },
+                    callback: function(cid, result){
+                        console.log('detect result', result);
+                        var catalog = new Toyz.Astro.Catalog.Catalog({
+                            cid: cid,
+                            settings: result.settings,
+                            sources: result.sources.data,
+                            viewer: this
+                        });
+                        this.catalog_dialog.catalogs[cid] = catalog;
+                    }.bind(this, cid)
+                })
             }.bind(options.parent)
         }
     };
@@ -366,6 +411,19 @@ Toyz.Astro.Viewer.Controls = function(options){
         func: {
             click: function(){
                 this.catalog_dialog.get_current_catalog().refresh();
+            }.bind(options.parent)
+        }
+    };
+    this.redraw = {
+        input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn astro-viewer-ctrl-refresh',
+        prop: {
+            type: 'image',
+            title: 'refresh the src catalog',
+            value: ''
+        },
+        func: {
+            click: function(){
+                this.catalog_dialog.get_current_catalog().redraw();
             }.bind(options.parent)
         }
     };
@@ -395,7 +453,8 @@ Toyz.Astro.Viewer.Contents = function(params){
             Zoom: ['zoom_out', 'zoom_in', 'zoom_bestfit', 'zoom_fullsize', 'zoom_input'],
             Tools: ['rect', 'center', 'hist', 'surface', 'colormap'],
             'Catalog Tools': [
-                'catalog', 'detect_stars', 'select_star', 'add_star', 'delete_star', 'refresh'
+                'catalog', 'detect_stars', 'select_star', 'add_star', 'delete_star', 
+                'refresh', 'redraw' // TODO: Fix updating images events to eliminate these btns
             ],
             'Image Info': ['img_coords', 'physical_coords', 'ra', 'dec', 'pixel_val']
         }

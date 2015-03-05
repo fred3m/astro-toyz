@@ -6,6 +6,8 @@ import numpy.lib.recfunctions as rfn
 import scipy.ndimage.filters as filters
 import scipy.ndimage as ndimage
 from scipy.optimize import curve_fit
+import multiprocessing
+
 from toyz.web import session_vars
 import toyz.utils.core as core
 import astrotoyz.core
@@ -62,6 +64,7 @@ fit_dtypes={
         ('y',float)
     ]
 }
+fit_columns = {fit: [v[0] for v in value] for fit,value in fit_dtypes.items()}
 
 def get_circle_foot(radius):
     """
@@ -94,8 +97,8 @@ def get_circle_foot(radius):
         row[xmin:xmax]=1
     return footprint
 
-def detect_sources(img_data,threshold,aperture_type='radius',size=5,footprint=None,bin_struct=None,
-                    sigma=2,saturate=None,margin=None):
+def detect_sources(img_data,threshold,aperture_type='radius',size=5,footprint=None,
+                    bin_struct=None, sigma=2,saturate=None,margin=None):
     """
     Erodes the background to isolate sources and selects the maximum as approximate positions of sources
 
@@ -169,7 +172,7 @@ def detect_sources(img_data,threshold,aperture_type='radius',size=5,footprint=No
     elif aperture_type=='footprint':
         params['footprint']=footprint
     else:
-        raise core.AstropypError('Invalid aperture type in detect_sources')        
+        raise astrotoyz.core.AstroToyzError('Invalid aperture type in detect_sources')        
     
     # Search for the maximum and minimum points to determine the amplitude of the pixel above its neighboring pixels
     # Note: this only gives the amplitude above the background if the background is within size/2 (or the footprint)
@@ -250,11 +253,11 @@ def fit_circular_moffat(data,init_params={}):
         This needs to be improved to get accurate error estimates
     """
     x = np.linspace(0, data.shape[1]-1, data.shape[1])
-    y = np.linspace(0, data.shape[0]-1, data.shape[1])
+    y = np.linspace(0, data.shape[0]-1, data.shape[0])
     x, y = np.meshgrid(x, y)
     
     # Guess initial parameters
-    floor=np.ma.median(data.flatten())
+    floor = np.median(data)
     amplitude=data.max()-floor
     x_mean=data.shape[1]/2
     y_mean=data.shape[0]/2
@@ -325,11 +328,11 @@ def fit_elliptical_moffat(data):
         This needs to be improved to get accurate error estimates
     """
     x = np.linspace(0, data.shape[1]-1, data.shape[1])
-    y = np.linspace(0, data.shape[0]-1, data.shape[1])
+    y = np.linspace(0, data.shape[0]-1, data.shape[0])
     x, y = np.meshgrid(x, y)
     
     # Generate initial guess
-    floor=np.ma.median(data.flatten())
+    floor = np.median(data)
     amplitude=data.max()-floor
     x_mean=data.shape[1]/2
     y_mean=data.shape[0]/2
@@ -358,10 +361,10 @@ def circular_gaussian((x,y), amplitude, x_mean, y_mean, std_dev, floor):
 
 def fit_circular_gaussian(data):
     x = np.linspace(0, data.shape[1]-1, data.shape[1])
-    y = np.linspace(0, data.shape[0]-1, data.shape[1])
+    y = np.linspace(0, data.shape[0]-1, data.shape[0])
     x, y = np.meshgrid(x, y)
     # Guess initial parameters
-    floor=np.ma.median(data.flatten())
+    floor = np.median(data)
     amplitude=data.max()-floor
     x_mean=data.shape[1]/2
     y_mean=data.shape[0]/2
@@ -387,7 +390,7 @@ def elliptical_gaussian((x,y), amplitude, x_mean, y_mean, std_x, std_y, theta, f
 
 def fit_elliptical_gaussian(data):
     x = np.linspace(0, data.shape[1]-1, data.shape[1])
-    y = np.linspace(0, data.shape[0]-1, data.shape[1])
+    y = np.linspace(0, data.shape[0]-1, data.shape[0])
     x, y = np.meshgrid(x, y)
     # Guess initial parameters
     floor = np.median(data)
@@ -399,11 +402,9 @@ def fit_elliptical_gaussian(data):
     std_y = 1
     theta = 0
     initial_guess=(amplitude, x_mean, y_mean, std_x, std_y, theta, 0)
-    print('initial guess', initial_guess)
     # Attempt fit and return empty lists if it does not converge
     try:
         fit_result,pcov=curve_fit(elliptical_gaussian,(x,y),data.ravel(),p0=initial_guess)
-        print('fit result', fit_result)
     except RuntimeError:
         return [],[]
     # Convert alpha into a FWHM
@@ -413,9 +414,8 @@ def get_centroid(data):
     """
     Calculate the center using a weighted average for each point
     """
-    print('using center of mass')
     x = np.linspace(0, data.shape[1]-1, data.shape[1])
-    y = np.linspace(0, data.shape[0]-1, data.shape[1])
+    y = np.linspace(0, data.shape[0]-1, data.shape[0])
     x, y = np.meshgrid(x, y)
     x = np.average(x, weights=data)
     y = np.average(y, weights=data)
@@ -431,114 +431,60 @@ fit_types={
     'no_fit': get_centroid
 }
 
-def find_stars(img_data,aperture_type='radius',maxima_size=5,maxima_sigma=2,
-                maxima_footprint=None,aperture_radii=[],threshold=None, saturate=None,
-                margin=None,bin_struct=None,fit_method='elliptical_moffat',id=None):
-    """
-    Detect possible sources in an image and attempt to fit them to a specified profile.
+# Multiprocessing base on PyMOTW by Doug Hellmann:
+# http://pymotw.com/2/multiprocessing/communication.html
+class FitWorker(multiprocessing.Process):
+    def __init__(self, task_queue, result_queue, data, radius, fit_method):
+        multiprocessing.Process.__init__(self)
+        self.task_queue = task_queue
+        self.result_queue = result_queue
+        self.data = data
+        self.radius = radius
+        self.fit_method = fit_method
     
-    Parameters
-    ----------
-    img_data: pandas DataFrame
-        Image data
-    aperture_type: string
-        Type of aperture to use when searching for local maxima. The options are:
-            'width': square with width specified by maxima_size
-            'radius': circule with radius specified by maxima_size
-            'footprint': binary structure with 1's representing 
-    maxima_size: int,optional
-        Either width of the area or the radius of a circle in which to search for a maximum (for each point)
-    maxima_footprint: numpy 2D array (dtype=boolean),optional
-        Instead of supplying a size, a footprint can be given of a different shape to use for finding a footprint
-            example:
-                footprint=np.array([
-                    [0,0,1,0,0],
-                    [0,1,1,1,0],
-                    [1,1,1,1,1],
-                    [0,1,1,1,0],
-                    [0,0,1,0,0]
-                ])
-            The above example would only seach for a maximum in the pixels labeled by 1 in the region
-            centered on a given pixel
-    aperture_radii: list,optional
-        List of radii to use to fit the source. In general this should be 5 times the fwhm of the source.
-    threshold: float,optional
-        Minimum pixel value above the background noise
-    saturate: float, optional
-        Value at which CCD's for the detector become saturated and are no longer linear
-    margin: int, optional
-        Sources close to the edges can be cut off to prevent partial data from becoming mixed up with good detections
-    bin_struct: 2d numpy array, optional
-        Minimum structure that regions of the image are shrunk down to in order to isolate maxima
-    fit_method: str
-        Type of fit to use to get centroid positions and approximate photometric parameters.
-        This step can be skipped by choosing fit_method='no fit'.
-    
-    Returns
-    -------
-    best_fits: numpy structured array
-        Structured array based on the fit method chosen (given by the fit_dtypes dict).
-    no_fit: numpy structured array
-        x and y coordinates of sources that could not be fit
-    """
-    # Estimate the background by assuming that the middle 80% of the pixels in the 
-    # image are background sources (does not work well, it is recommended to set a 
-    # threshold)
-    if threshold is None:
-        sorted_data=np.sort(img_data.flatten())
-        back_min_idx=int(sorted_data.size*0.1)
-        back_max_idx=int(sorted_data.size*0.9)
-        back_estimate=sorted_data[back_min_idx:back_max_idx]
-        back_mean=np.mean(back_estimate)
-        back_median=np.median(back_estimate)
-        back_std=np.std(back_estimate)
-        back_min=back_estimate[0]
-        back_max=back_estimate[-1]
-        threshold=max(abs(back_mean-back_min),abs(back_max-back_mean))
-        
-        info='\n'.join([
-            'Backround estimate minimum:'+str(back_min),
-            'Background estimate maximum:'+str(back_max),
-            'median:'+str(back_median),
-            'mean:'+str(back_mean),
-            'standard deviation'+str(back_std),
-            'threshold:'+str(threshold)
-        ])
-        
-        if id is None:
-            print(id)
-        else:
-            core.progress_log(info)
-    
-    # Find all the point sources and their approximate positions
-    sources=detect_sources(img_data,threshold,aperture_type,maxima_size,
-        maxima_footprint,bin_struct,maxima_sigma,saturate,margin)
-    src_indices=np.where(sources)
-    if id is None:
-        print('Number of stars:',src_indices[0].size)
-    else:
-        core.progress_log('Number of stars: '+str(src_indices[0].size))
-    
-    # Fit the sources to a valid fit method. 
-    if fit_method not in fit_types.keys():
-        raise astrotoyz.core.AstroToyzError(
-            "Invalid fit method, please choose from '"+"','".join(fit_types))
-    
-    import time
-    t1 = time.time()
-    best_fits = fit_elliptical_moffat(img_data.astype('float64'), 
-                    src_indices[1].astype('int32'), 
-                    src_indices[0].astype('int32'), 
-                    aperture_radii[0],threshold)
-    best_fits=best_fits.ravel().view(dtype=fit_dtypes['fast'])
-    no_fit=[]
-    t2=time.time()
-    print('fit {0} objects in {1}s'.format(len(best_fits), t2-t1))
-    
-    return [best_fits,no_fit]
+    def run(self):
+        print('running',self.name)
+        fit_func=fit_types[self.fit_method]
+        columns = fit_columns[self.fit_method]
+        radius = self.radius
+        data = self.data
+        while True:
+            params = self.task_queue.get()
+            try:
+                if params is not None:
+                    x = params['x']
+                    y = params['y']
+                    xmin=max(x-radius,0)
+                    xmax=min(x+radius+1,data.shape[1])
+                    ymin=max(y-radius,0)
+                    ymax=min(y+radius+1,data.shape[0])
+                    best_fit,pcov=fit_func(data[ymin:ymax,xmin:xmax])
+                    if len(best_fit)==0:
+                        self.task_queue.task_done()
+                        self.result_queue.put(tuple([np.nan for i in range(len(columns))]))
+                    else:
+                        best_fit[1] += x
+                        best_fit[2] += y
+                        self.task_queue.task_done()
+                        self.result_queue.put(tuple(best_fit))
+                else:
+                    print(self.name,'received exit')
+                    self.task_queue.task_done()
+                    break
+            except Exception as e:
+                import traceback
+                print('exception in fitting:')
+                print(traceback.format_exc())
+                print('\n\n\n')
+                self.task_queue.task_done()
+                self.result_queue.put(tuple([np.nan for i in range(len(columns))]))
+        print(self.name,'finished')
+        return
 
-def find_stars_old(img_data,aperture_type='radius',maxima_size=5,maxima_sigma=2,maxima_footprint=None,aperture_radii=[],threshold=None,
-                saturate=None,margin=None,bin_struct=None,fit_method='elliptical moffat',id=None):
+def find_stars(img_data, aperture_type='radius', maxima_size=5, 
+        maxima_sigma=2, maxima_footprint=None, aperture_radii=[], threshold=None,
+        saturate=None, margin=None, bin_struct=None, fit_method='elliptical moffat',
+        wcs=None):
     """
     Detect possible sources in an image and attempt to fit them to a specified profile.
     
@@ -586,8 +532,9 @@ def find_stars_old(img_data,aperture_type='radius',maxima_size=5,maxima_sigma=2,
     no_fit: numpy structured array
         x and y coordinates of sources that could not be fit
     """
-    
-    # Estimate the background by assuming that the middle 80% of the pixels in the image are background
+    #core.progress_log('Searching for point sources...')
+    # Estimate the background by assuming that the middle 80% of the pixels in the 
+    # image are background
     if threshold is None:
         sorted_data=np.sort(img_data.flatten())
         back_min_idx=int(sorted_data.size*0.1)
@@ -608,57 +555,58 @@ def find_stars_old(img_data,aperture_type='radius',maxima_size=5,maxima_sigma=2,
             'standard deviation'+str(back_std),
             'threshold:'+str(threshold)
         ])
-        
-        if id is None:
-            print(id)
-        else:
-            core.progress_log(info)
-    
+        #core.progress_log(info)
     # Find all the point sources and their approximate positions
-    sources=detect_sources(img_data,threshold,aperture_type,maxima_size,maxima_footprint,bin_struct,maxima_sigma,saturate,margin)
+    sources=detect_sources(img_data,threshold,aperture_type,maxima_size,
+        maxima_footprint,bin_struct,maxima_sigma,saturate,margin)
     src_indices=np.where(sources)
-    if id is None:
-        print('Number of stars:',src_indices[0].size)
-    else:
-        core.progress_log('Number of stars: '+str(src_indices[0].size))
+    #core.progress_log('Number of stars: '+str(src_indices[0].size))
     
     # Fit the sources to a valid fit method. 
     if fit_method not in fit_types.keys():
-        raise core.AstropypError("Invalid fit method, please choose from '"+"','".join(fit_types))
-    best_fits=np.array([],dtype=fit_dtypes[fit_method])
-    
-    if fit_method!='no fit':
-        if id is None:
-            print('Fitting points')
-        else:
-            core.progress_log('Fitting points')
-        fit_func=fit_types[fit_method]
-        step=0
-        if len(aperture_radii)==0:
-            step=int(maxima_size*3/4)
-        else:
-            step=aperture_radii[0]
-        no_fit=np.array([],dtype=fit_dtypes['no fit'])
-        for i in range(len(src_indices[0])):
-            x=src_indices[1][i]
-            y=src_indices[0][i]
-            xMin=max(x-step,0)
-            xMax=min(x+step+1,img_data.shape[1])
-            yMin=max(y-step,0)
-            yMax=min(y+step+1,img_data.shape[0])
-            best_fit,pcov=fit_func(img_data[yMin:yMax,xMin:xMax])
-            if len(best_fit)>0:
-                best_fit=np.array([tuple(best_fit)],dtype=fit_dtypes[fit_method])
-                best_fit['x']=best_fit['x']+xMin
-                best_fit['y']=best_fit['y']+yMin
-                best_fits=np.hstack((best_fits,best_fit))
-            else:
-                no_fit=np.hstack((no_fit,np.array([tuple((src_indices[1][i],src_indices[0][i]))],dtype=fit_dtypes['no fit'])))
+        raise astrotoyz.core.AstroToyzError(
+            "Invalid fit method, please choose from '"+"','".join(fit_types))
+    #core.progress_log('Fitting points')
+    fit_func=fit_types[fit_method]
+    step=0
+    if len(aperture_radii)==0:
+        radius=int(maxima_size*3/4)
     else:
-        best_fits=np.empty(len(src_indices[1]),dtype=fit_dtypes['no fit'])
-        best_fits['x']=src_indices[1]
-        best_fits['y']=src_indices[0]
-        no_fit=np.array([],dtype=fit_dtypes['no fit'])
+        radius=aperture_radii[0]
     
+    tasks = multiprocessing.JoinableQueue()
+    results = multiprocessing.Queue()
+
+    # Start processes
+    num_processes = multiprocessing.cpu_count()
+    print('Creating {0} processes'.format(num_processes))
+    processes = [FitWorker(tasks, results, img_data, radius, fit_method) 
+                    for i in xrange(num_processes)]
+    for p in processes:
+        p.start()
+    num_sources = len(src_indices[0])
+    # TODO: use this to test detect sources: 
+    num_sources = 5
+    for i in range(num_sources):
+        x=src_indices[1][i]
+        y=src_indices[0][i]
+        tasks.put({'x': x,'y': y})
     
-    return [best_fits,no_fit]
+    # Add a poison pill for each process
+    for p in range(num_processes):
+        tasks.put(None)
+    # Wait for all of the tasks to finish
+    tasks.join()
+    
+    # Initialize the array to save computation time
+    # and initialize to NaN in case of any bad rows
+    sources = np.zeros(shape=(num_sources,), dtype=fit_dtypes[fit_method])
+    sources.fill(np.nan)
+    # get the results
+    print('num sources', num_sources)
+    for i in xrange(num_sources):
+        print('i', i)
+        result = results.get()
+        #print('i', i, result)
+        sources[i] = result
+    return sources

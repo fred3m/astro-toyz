@@ -86,7 +86,7 @@ def update_catalog(cid, settings, changes):
                 catalog.delete_src(change['info'])
             else:
                 ToyzJobError("Change action '{0}' is not supported".format(change['action']))
-    print('catalog after updates:', catalog)
+    #print('catalog after updates:', catalog)
 
 def build_src_info(catalog, src_info, file_info):
     """
@@ -111,6 +111,38 @@ def build_src_info(catalog, src_info, file_info):
     else:
         src_info[id_name] = "{0:.6f},{0:.6f}".format(src_info['x'], src_info['y'])
     return src_info
+
+def detect_sources(file_info, cid, settings):
+    from astrotoyz.detect_sources import find_stars
+    import astrotoyz.viewer
+    session_vars.catalogs[cid] = None
+    hdulist = toyz.web.viewer.get_file(file_info)
+    wcs = astrotoyz.viewer.get_wcs(file_info, hdulist)
+    hdu = hdulist[int(file_info['frame'])]
+    settings['img_data'] = hdu.data
+    sources = find_stars(**settings)
+    catalog = Catalog(cid, file_info=file_info, data=sources)
+    catalog.dropna(inplace=True)
+    if wcs is not None:
+        from astropy.coordinates import SkyCoord
+        id_name = catalog.settings['data']['id_name']
+        ra_name = catalog.settings['data']['ra_name']
+        dec_name = catalog.settings['data']['dec_name']
+        wcs_array = wcs.all_pix2world(catalog['x'], catalog['y'], 1)
+        catalog[ra_name] = wcs_array[0]
+        catalog[dec_name] = wcs_array[1]
+        coords = SkyCoord(ra=wcs_array[0], dec=wcs_array[1], unit='deg')
+        catalog[id_name] = coords.to_string('hmsdms')
+    else:
+        sep = np.zeroes(shape=(catalog.shape[0],),dtype='|S1')
+        sep.fill(',')
+        new_id = np.core.defchararray.add(catalog['x'].values.astype('|S10'), sep)
+        new_id = np.core.defchararray.add(new_id,catalog['y'].values.astype('|S10'))
+        catalog[id_name] = new_id
+    catalog.set_index(id_name, inplace=True)
+    session_vars.catalogs[cid] = catalog;
+    print('finished detecting sources')
+    return catalog
 
 class CatalogMeta(Base):
     """
@@ -170,7 +202,7 @@ def load_catalog(file_info, load_log=False):
             engine)
     else:
         log = None
-    catalog = Catalog(settings, cid, meta.name, log, dataframe)
+    catalog = Catalog(cid, file_info, name=meta.name, log=log, data=dataframe)
     return catalog
 
 class Catalog(pandas.DataFrame):
@@ -178,36 +210,13 @@ class Catalog(pandas.DataFrame):
     Pandas Dataframe with additional methods to store metadata, log information, and
     functions relating to adding/removing point sources
     """
-    def __init__(self, settings, cid=None, name=None, log=None, dataframe=None, **kwargs):
-        index = None
-        if not isinstance(dataframe, pandas.DataFrame):
-            df = {}
-            if dataframe is not None:
-                if 'data' in dataframe:
-                    if len(dataframe['data'])>0:
-                        df['data'] = np.array(dataframe['data'])
-                if 'columns' in dataframe:
-                    df['columns'] = dataframe['columns']
-                if 'index' in dataframe:
-                    index = dataframe['index']
-            dataframe = pandas.DataFrame(**df)
+    def __init__(self, cid, file_info, settings={}, name=None, data=None, log=None, **df_settings):
+        if data is not None:
+            df_settings['data'] = data
+        pandas.DataFrame.__init__(self, **df_settings)
         
-        pandas.DataFrame.__init__(self, dataframe)
-        if index is not None:
-            print('index:', index)
-            self.set_index(index, inplace=True)
-        # Set any additional variables
-        for arg in kwargs:
-            setattr(self, arg, kwargs[arg])
         # Update Catalog specific attributes
-        if cid is not None:
-            self.cid = cid
-        else:
-            if 'cid' in settings:
-                self.cid = settings['cid']
-                del settings['cid']
-            else:
-                raise astrotoyz.core.AstroToyzError("You must supply a catalog cid")
+        self.cid = cid
         if name is not None:
             self.name = name
         else:
@@ -220,6 +229,7 @@ class Catalog(pandas.DataFrame):
         default_settings = {
             'creation': {
                 'creation_time': str(datetime.now()),
+                'fits file': file_info,
                 'software_version': {
                     'toyz': 'alpha', # TODO: make toyz.version.version work properly
                     'astrotoyz': 'alpha' # TODO: make astrotoyz.version.version work properly
@@ -231,6 +241,7 @@ class Catalog(pandas.DataFrame):
                 'file_settings': {}
             },
             'data': {
+                'fit_method': 'elliptical_moffat',
                 'ra_name': 'ra',
                 'dec_name': 'dec',
                 'id_name': 'id',
@@ -245,6 +256,9 @@ class Catalog(pandas.DataFrame):
             }
         }
         self.settings = toyz.utils.core.merge_dict(default_settings, settings, True)
+        if (self.index.name is None and self.index.names[0] is None and 
+                self.settings['data']['id_name'] in self.columns):
+            self.set_index(self.settings.data.id_name, inplace=True)
         if log is not None:
             self.log = log
         else:
@@ -409,7 +423,7 @@ class Catalog(pandas.DataFrame):
         row = self.loc[src_info[id_name]]
         self.drop(src_info[id_name], inplace=True)
         # Notify the user if no matching sources were found
-        print('catalog after delete', self)
+        #print('catalog after delete', self)
         if len(row)==0:
             return False
         return True
@@ -472,3 +486,10 @@ class Catalog(pandas.DataFrame):
         if idx.shape==():
             idx = idx.max()
         return idx, d2d, self.loc[self.index[idx]]
+    def get_markers(self):
+        data = self.reset_index()[['id','x','y']].fillna('NaN').values.tolist()
+        markers = {
+            'columns': ['id','x','y'],
+            'data': data
+        }
+        return markers

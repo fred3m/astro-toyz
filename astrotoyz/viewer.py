@@ -107,7 +107,6 @@ def get_2d_fit(file_info, fit_type, x, y, width, height, **kwargs):
         raise astrotoyz.core.AstroToyzError("Fit parameters did not match parameter map")
     if len(fit)>0:
         params = {value[0]:fit[n] for n, value in enumerate(param_map)}
-        print('params', params)
         params['x'] = xmin+params['x']
         params['y'] = ymin+params['y']
         params['coords'] = str(params['x'])+', '+str(params['y'])

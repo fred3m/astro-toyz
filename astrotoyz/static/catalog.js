@@ -53,9 +53,6 @@ Toyz.Astro.Catalog.Catalog = function(options){
         throw Error("A catalog must be initialized with a 'cid' field");
     };
     options = $.extend(true, {
-        dataframe:{
-            index: ['id']
-        },
         settings: {
             web: {
                 visible: true,
@@ -67,52 +64,28 @@ Toyz.Astro.Catalog.Catalog = function(options){
                 }
             },
             file_info: {
-                filepath: '',
-                file_type: '',
-                file_settings: {}
-            },
-            data: {
-                ra_name: 'ra',
-                dec_name: 'dec',
-                id_name: 'id',
-                min_sep: {
-                    wcs: [1,'arcsec'],
-                    px: 5
-                }
+                filepath:'',
+                file_type:'',
+                file_settings:{}
             }
         },
         changes: [],
         selected: undefined,
         selected_marker: undefined
     }, options);
-    
-    this.update(options);
+    this.sources = [];
     this.markers = [];
+    this.update(options);
+    console.log('new catalog', this);
 };
 Toyz.Astro.Catalog.Catalog.prototype.update = function(update){
+    console.log('update', update);
     var redraw_catalog = false;
-    if(update.hasOwnProperty('dataframe')){
-        // Create the dataframe if it doesn't exist yet
-        if(!this.hasOwnProperty('dataframe')){
-            if(!update.dataframe.hasOwnProperty('index')){
-                if(update.hasOwnProperty('ra_colname')){
-                    this.ra_colname = update.ra_colname;
-                };
-                if(update.hasOwnProperty('dec_colname')){
-                    this.dec_colname = update.dec_colname;
-                };
-                update.index = [this.ra_colname, this.dec_colname];
-            };
-            this.dataframe = new Toyz.Core.Dataframe(update.dataframe);
-        }else{
-            this.dataframe.update(update.dataframe);
-        };
-        redraw_catalog = true;
-        delete update.dataframe;
-    };
     if(update.hasOwnProperty('settings')){
         this.settings = $.extend(true, this.settings, update.settings);
-        if(update.settings.hasOwnProperty('marker')){
+        if(update.settings.hasOwnProperty('web') && 
+            update.settings.web.hasOwnProperty('marker')
+        ){
             redraw_catalog = true;
         };
         delete update.settings;
@@ -123,15 +96,23 @@ Toyz.Astro.Catalog.Catalog.prototype.update = function(update){
             top: '0px',
             left: '0px'
         })
-        //this.$viewer = update.viewer.frames[update.viewer.viewer_frame].$viewer;
         update.viewer.$tile_div.append(this.$viewer);
         this.file_info = update.viewer.frames[update.viewer.viewer_frame].file_info;
         this.img_info = this.file_info.images[this.file_info.frame];
-        console.log('viewer dims',this.$viewer.width(), this.$viewer.height());
     };
     for(var u in update){
         this[u] = update[u];
     };
+    if(update.hasOwnProperty('sources')){
+        for(var i=0; i<this.markers.length; i++){
+            this.markers[i] = this.mark_src({
+                id: update.sources[i][0],
+                x: update.sources[i][1],
+                y: update.sources[i][2]
+            });
+        };
+    };
+    console.log('catalog', this);
     // If the catalog data or marker properties have been changed, redraw the catalog
     if(redraw_catalog==true){
         if(this.hasOwnProperty('$viewer') && this.$viewer!==undefined){
@@ -139,31 +120,40 @@ Toyz.Astro.Catalog.Catalog.prototype.update = function(update){
         };
     };
     console.log('catalog after update', this);
+    console.log('changes:', this.changes);
+};
+Toyz.Astro.Catalog.Catalog.prototype.select_src = function(src){
+    if(this.selected!==undefined && this.selected.id==src.src_info.id){
+        this.$selected_marker.remove();
+        this.selected = undefined;
+        return;
+    }else if(this.selected!==undefined){
+        this.$selected_marker.remove();
+    };
+    this.selected = src;
+    this.selected_marker = this.mark_src(src.src_info, {
+        line_width: 2*this.settings.web.marker.line_width
+    });
 };
 Toyz.Astro.Catalog.Catalog.prototype.add_src = function(src_info){
     // get rid of any fields not in the catalogs columns
-    for(var prop in src_info){
-        if(this.dataframe.columns.indexOf(prop)<0){
-            delete src_info[prop];
-        };
-    };
     this.changes.push({
         action: 'add_src',
         info: src_info
     });
-    this.dataframe.add_row(src_info);
-    this.mark_src(src_info);
-    console.log('catalog after add', this);
-    console.log('changes:', this.changes);
+    var marker = this.mark_src(src_info);
+    this.markers.push(marker);
+    //console.log('catalog after add', this);
+    //console.log('changes:', this.changes);
 };
-Toyz.Astro.Catalog.Catalog.prototype.delete_src = function(row_ids){
+Toyz.Astro.Catalog.Catalog.prototype.delete_src = function(selected){
     this.changes.push({
         action: 'delete_src',
-        info: row_ids
+        info: selected.src_info
     });
-    this.dataframe.delete_row(row_ids);
-    console.log('catalog after delete', this);
-    console.log('changes:', this.changes);
+    selected.$circle.remove();
+    this.selected_marker.$circle.remove();
+    this.selected = undefined;
 };
 Toyz.Astro.Catalog.Catalog.prototype.mark_src = function(src_info, marker){
     var marker = $.extend(true, {}, this.settings.web.marker, marker);
@@ -181,15 +171,10 @@ Toyz.Astro.Catalog.Catalog.prototype.mark_src = function(src_info, marker){
         xy[0] = xy[0]-marker.radius;
         xy[1] = xy[1]-marker.radius;
     };
-    console.log('img_info', img_info);
-    console.log('src_info', src_info);
-    console.log('xy', xy);
-    console.log('width', width);
-    console.log('radius', radius);
     var $circle = Toyz.Viewer.DrawingTools.draw_circle(
         this.$viewer,
-        xy[0]-width, // the extra 10 is for the padding from the tile border
-        xy[1]-width, // the extra 10 is for the padding from the tile border
+        xy[0]-width,
+        xy[1]-width,
         radius,
         {
             css: {
@@ -202,13 +187,12 @@ Toyz.Astro.Catalog.Catalog.prototype.mark_src = function(src_info, marker){
         $circle: $circle,
         src_info: src_info
     };
-    this.markers.push(src_marker);
     $circle.click(function(src){
         if(this.viewer.tools.active_tool=='select_star'){
             this.select_src(src);
         };
     }.bind(this, src_marker));
-    return $circle;
+    return src_marker;
 };
 Toyz.Astro.Catalog.Catalog.prototype.refresh = function(){
     this.viewer.$tile_div.append(this.$viewer);
@@ -216,38 +200,14 @@ Toyz.Astro.Catalog.Catalog.prototype.refresh = function(){
 Toyz.Astro.Catalog.Catalog.prototype.redraw = function(){
     this.$viewer.empty()
     this.viewer.$tile_div.append(this.$viewer);
-    for(var i=0; i<this.dataframe.data.length; i++){
-        row = this.dataframe.get_row(i);
-        this.mark_src(row);
+    for(var i=0; i<this.markers.length; i++){
+        this.markers[i] = this.mark_src(this.markers[i].src_info);
+        /*this.markers[i] = this.mark_src({
+            id: this.markers[i][0],
+            x: this.markers[i][1],
+            y: this.markers[i][2]
+        });*/
     };
-};
-Toyz.Astro.Catalog.Catalog.prototype.select_src = function(src){
-    if(this.selected!==undefined && this.selected.id==src.src_info.id){
-        console.log('selected', this.selected.id);
-        console.log('src', src.src_info.id);
-        console.log('matched');
-        this.$selected_marker.remove();
-        this.selected = undefined;
-        return;
-    }else if(this.selected!==undefined){
-        console.log('selected', this.selected.id);
-        console.log('src', src.src_info.id);
-        this.$selected_marker.remove();
-    };
-    this.selected = src;
-    this.$selected_marker = this.mark_src(src.src_info, {
-        line_width: 2*this.settings.web.marker.line_width
-    });
-};
-Toyz.Astro.Catalog.Catalog.prototype.delete_src = function(selected){
-    this.changes.push({
-        action: 'delete_src',
-        info: selected.src_info
-    });
-    //this.dataframe.delete_row(selected.src_info.id);
-    selected.$circle.remove();
-    this.$selected_marker.remove();
-    this.selected = undefined;
 };
 
 Toyz.Astro.Catalog.Dialog = function(options){
@@ -256,8 +216,8 @@ Toyz.Astro.Catalog.Dialog = function(options){
         controls: {}
     }, options);
     this.$div = $('<div/>');
-    this.cat_index = 0;
-    this.catalogs = [];
+    this.cat_idx = 0;
+    this.catalogs = {};
     this.workspace = options.workspace;
     this.viewer = options.viewer;
     var controls = $.extend(true, {
@@ -317,25 +277,20 @@ Toyz.Astro.Catalog.Dialog = function(options){
                                 }
                             },
                             init: function(new_item){
-                                var cat_name = 'cat-'+this.catalogs.length;
+                                var cat_name = 'cat-'+this.cat_idx++;
                                 // Create new Catalog
                                 var catalog = new Toyz.Astro.Catalog.Catalog({
                                     name: cat_name,
                                     cid: cat_name,
-                                    dataframe: {
-                                        columns: ['id','ra','dec','x','y'],
-                                        index: ['id'],
-                                        data: []
-                                    },
                                     viewer: this.viewer
                                 });
-                                this.catalogs.push(catalog);
+                                this.catalogs[cat_name] = catalog;
                                 new_item.cid = cat_name;
-                                this.cat_index = this.catalogs.length-1;
                                 // Update dialog parameters
                                 new_item.params.cat_name.$input.val(cat_name);
                                 new_item.params.colorpicker.$input = $('<input/>')
-                                    .prop('type','text');
+                                    .prop('type','text')
+                                    .val(catalog.settings.web.marker.color);
                                 new_item.$div.append(new_item.params.colorpicker.$input);
                                 var defaults = Toyz.Astro.Catalog.colorpicker_defaults({
                                     change: function(color){
@@ -348,6 +303,12 @@ Toyz.Astro.Catalog.Dialog = function(options){
                                 // Add the catalog to the server (necessary to select sources,
                                 // add/delete sources, and save the catalog)
                                 console.log('catalog', catalog);
+                                var file_info = $.extend(true,{},
+                                    this.viewer.frames[this.viewer.viewer_frame].file_info);
+                                file_info = {
+                                    filepath: file_info.filepath,
+                                    frame: file_info.frame
+                                };
                                 this.workspace.websocket.send_task({
                                     task: {
                                         module: 'astrotoyz.tasks',
@@ -355,8 +316,8 @@ Toyz.Astro.Catalog.Dialog = function(options){
                                         parameters: {
                                             settings: catalog.settings,
                                             cid: catalog.cid,
-                                            dataframe: catalog.dataframe,
-                                            name: catalog.name
+                                            name: catalog.name,
+                                            file_info: file_info
                                         }
                                     },
                                     callback: function(catalog, result){
@@ -471,11 +432,12 @@ Toyz.Astro.Catalog.Dialog.prototype.update = function(update){
 };
 Toyz.Astro.Catalog.Dialog.prototype.get_current_catalog = function(){
     var param = this.gui.params.catalogs.get_selected_param();
+    return this.catalogs[param.cid];
     //console.log('selected param', param);
-    for(var i=0; i<this.catalogs.length; i++){
+    /*for(var i=0; i<this.catalogs.length; i++){
         if(this.catalogs[i].cid==param.cid){
             return this.catalogs[i];
         }
     };
-    return undefined;
+    return undefined;*/
 };

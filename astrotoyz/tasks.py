@@ -117,8 +117,8 @@ def add_src(toyz_settings, tid, params):
         response['status'] = 'success'
     else:
         response['status'] = 'failed: source already exists'
-    print('catalog after added source')
-    print(catalog)
+    #print('catalog after added source')
+    #print(catalog)
     return response
 
 def delete_src(toyz_settings, tid, params):
@@ -133,4 +133,21 @@ def delete_src(toyz_settings, tid, params):
         response['status'] = 'success'
     else:
         response['status'] = 'failed'
+    return response
+
+def detect_sources(toyz_settings, tid, params):
+    """
+    Detect sources and create an object catalog in the current session
+    """
+    core.check4keys(params,['file_info', 'cid', 'settings'])
+    catalog = astro.catalog.detect_sources(**params)
+    #print('catalog', catalog)
+    #print('catlog shape', catalog.shape)
+    print('generating response')
+    response = {
+        'id': 'detect_sources',
+        'sources': catalog.get_markers(),
+        'settings': catalog.settings
+    }
+    print('response', response)
     return response
