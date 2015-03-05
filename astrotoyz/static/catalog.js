@@ -59,6 +59,12 @@ Toyz.Astro.Catalog.Catalog = function(options){
         settings: {
             web: {
                 visible: true,
+                marker: {
+                    shape: 'circle',
+                    color: '#0000FF',
+                    line_width: 2,
+                    radius: 10
+                }
             },
             file_info: {
                 filepath: '',
@@ -75,10 +81,13 @@ Toyz.Astro.Catalog.Catalog = function(options){
                 }
             }
         },
-        changes: []
+        changes: [],
+        selected: undefined,
+        selected_marker: undefined
     }, options);
     
     this.update(options);
+    this.markers = [];
 };
 Toyz.Astro.Catalog.Catalog.prototype.update = function(update){
     var redraw_catalog = false;
@@ -108,14 +117,26 @@ Toyz.Astro.Catalog.Catalog.prototype.update = function(update){
         };
         delete update.settings;
     };
+    if(update.hasOwnProperty('viewer')){
+        this.$viewer = $('<div/>').css({
+            position: 'absolute',
+            top: '0px',
+            left: '0px'
+        })
+        //this.$viewer = update.viewer.frames[update.viewer.viewer_frame].$viewer;
+        update.viewer.$tile_div.append(this.$viewer);
+        this.file_info = update.viewer.frames[update.viewer.viewer_frame].file_info;
+        this.img_info = this.file_info.images[this.file_info.frame];
+        console.log('viewer dims',this.$viewer.width(), this.$viewer.height());
+    };
     for(var u in update){
         this[u] = update[u];
     };
     // If the catalog data or marker properties have been changed, redraw the catalog
     if(redraw_catalog==true){
-        if(this.hasOwnProperty('viewer')){
+        if(this.hasOwnProperty('$viewer') && this.$viewer!==undefined){
             this.redraw();
-        }
+        };
     };
     console.log('catalog after update', this);
 };
@@ -131,6 +152,7 @@ Toyz.Astro.Catalog.Catalog.prototype.add_src = function(src_info){
         info: src_info
     });
     this.dataframe.add_row(src_info);
+    this.mark_src(src_info);
     console.log('catalog after add', this);
     console.log('changes:', this.changes);
 };
@@ -143,15 +165,101 @@ Toyz.Astro.Catalog.Catalog.prototype.delete_src = function(row_ids){
     console.log('catalog after delete', this);
     console.log('changes:', this.changes);
 };
+Toyz.Astro.Catalog.Catalog.prototype.mark_src = function(src_info, marker){
+    var marker = $.extend(true, {}, this.settings.web.marker, marker);
+    var file_info = this.viewer.frames[this.viewer.viewer_frame].file_info;
+    var img_info = file_info.images[file_info.frame];
+    var xy = this.viewer.get_viewer_coords(src_info.x, src_info.y, img_info);
+    var radius = marker.radius;
+    var width = marker.line_width
+    if(img_info.scale>1){
+        xy[0] = xy[0]-marker.radius*img_info.scale;
+        xy[1] = xy[1]-marker.radius*img_info.scale;
+        radius = radius * img_info.scale;
+        width = width * img_info.scale;
+    }else{
+        xy[0] = xy[0]-marker.radius;
+        xy[1] = xy[1]-marker.radius;
+    };
+    console.log('img_info', img_info);
+    console.log('src_info', src_info);
+    console.log('xy', xy);
+    console.log('width', width);
+    console.log('radius', radius);
+    var $circle = Toyz.Viewer.DrawingTools.draw_circle(
+        this.$viewer,
+        xy[0]-width, // the extra 10 is for the padding from the tile border
+        xy[1]-width, // the extra 10 is for the padding from the tile border
+        radius,
+        {
+            css: {
+                border: width.toString()+'px solid'+marker.color,
+            },
+            classes: [this.cid]
+        }
+    );
+    var src_marker = {
+        $circle: $circle,
+        src_info: src_info
+    };
+    this.markers.push(src_marker);
+    $circle.click(function(src){
+        if(this.viewer.tools.active_tool=='select_star'){
+            this.select_src(src);
+        };
+    }.bind(this, src_marker));
+    return $circle;
+};
+Toyz.Astro.Catalog.Catalog.prototype.refresh = function(){
+    this.viewer.$tile_div.append(this.$viewer);
+};
+Toyz.Astro.Catalog.Catalog.prototype.redraw = function(){
+    this.$viewer.empty()
+    this.viewer.$tile_div.append(this.$viewer);
+    for(var i=0; i<this.dataframe.data.length; i++){
+        row = this.dataframe.get_row(i);
+        this.mark_src(row);
+    };
+};
+Toyz.Astro.Catalog.Catalog.prototype.select_src = function(src){
+    if(this.selected!==undefined && this.selected.id==src.src_info.id){
+        console.log('selected', this.selected.id);
+        console.log('src', src.src_info.id);
+        console.log('matched');
+        this.$selected_marker.remove();
+        this.selected = undefined;
+        return;
+    }else if(this.selected!==undefined){
+        console.log('selected', this.selected.id);
+        console.log('src', src.src_info.id);
+        this.$selected_marker.remove();
+    };
+    this.selected = src;
+    this.$selected_marker = this.mark_src(src.src_info, {
+        line_width: 2*this.settings.web.marker.line_width
+    });
+};
+Toyz.Astro.Catalog.Catalog.prototype.delete_src = function(selected){
+    this.changes.push({
+        action: 'delete_src',
+        info: selected.src_info
+    });
+    //this.dataframe.delete_row(selected.src_info.id);
+    selected.$circle.remove();
+    this.$selected_marker.remove();
+    this.selected = undefined;
+};
 
 Toyz.Astro.Catalog.Dialog = function(options){
     options = $.extend(true, {
-        dialog: {}
+        dialog: {},
+        controls: {}
     }, options);
     this.$div = $('<div/>');
     this.cat_index = 0;
     this.catalogs = [];
     this.workspace = options.workspace;
+    this.viewer = options.viewer;
     var controls = $.extend(true, {
         type: 'div',
         params: {
@@ -218,7 +326,8 @@ Toyz.Astro.Catalog.Dialog = function(options){
                                         columns: ['id','ra','dec','x','y'],
                                         index: ['id'],
                                         data: []
-                                    }
+                                    },
+                                    viewer: this.viewer
                                 });
                                 this.catalogs.push(catalog);
                                 new_item.cid = cat_name;
@@ -284,7 +393,7 @@ Toyz.Astro.Catalog.Dialog = function(options){
                                 lbl: 'thickness',
                                 prop: {
                                     type: 'Number',
-                                    value: 1,
+                                    value: 2,
                                 }
                             }
                         }
@@ -327,7 +436,7 @@ Toyz.Astro.Catalog.Dialog = function(options){
                 }
             }
         }
-    }, options);
+    }, options.controls);
     this.gui = new Toyz.Gui.Gui({
         params: controls,
         $parent: this.$div

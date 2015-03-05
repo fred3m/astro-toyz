@@ -6,54 +6,55 @@ import numpy.lib.recfunctions as rfn
 import scipy.ndimage.filters as filters
 import scipy.ndimage as ndimage
 from scipy.optimize import curve_fit
-
+from toyz.web import session_vars
 import toyz.utils.core as core
+import astrotoyz.core
 
 # Format of the output for each fit type
 fit_dtypes={
     'circular_moffat':[
+        ('amplitude',float),
         ('x',float),
         ('y',float),
         ('fwhm',float),
         ('beta',float),
-        ('amplitude',float),
         ('floor',float)
     ],
     'elliptical_moffat':[
+        ('amplitude',float),
         ('x',float),
         ('y',float),
         ('fwhm1',float),
         ('fwhm2',float),
         ('beta',float),
         ('angle',float),
-        ('amplitude',float),
         ('floor',float)
     ],
     'fast':[
+        ('amplitude',float),
         ('x',float),
         ('y',float),
         ('fwhm1',float),
         ('fwhm2',float),
         ('beta',float),
         ('angle',float),
-        ('amplitude',float),
         ('floor',float),
         ('status', float)
     ],
     'circular_gaussian':[
+        ('amplitude',float),
         ('x',float),
         ('y',float),
         ('std_dev',float),
-        ('amplitude',float),
         ('floor',float),
     ],
     'elliptical_gaussian':[
+        ('amplitude',float),
         ('x',float),
         ('y',float),
         ('std_x',float),
         ('std_y',float),
         ('angle',float),
-        ('amplitude',float),
         ('floor',float)
     ],
     'no_fit':[
@@ -201,7 +202,7 @@ def detect_sources(img_data,threshold,aperture_type='radius',size=5,footprint=No
     lbl,nbrLbl=ndimage.label(maxima)
     return maxima
 
-def circular_moffat((x,y),x_mean, y_mean,beta,alpha,amplitude,floor):
+def circular_moffat((x,y),amplitude,x_mean, y_mean,beta,alpha,floor):
     """
     Uses 2d array of data to calculate a moffat distribution at the point (x,y), then flattens the data
     into a 1d array for processing.
@@ -248,7 +249,9 @@ def fit_circular_moffat(data,init_params={}):
         Covariant matrix that describes the error in the fit (but in an 'unscientific' way).
         This needs to be improved to get accurate error estimates
     """
-    x,y = np.indices(data.shape)
+    x = np.linspace(0, data.shape[1]-1, data.shape[1])
+    y = np.linspace(0, data.shape[0]-1, data.shape[1])
+    x, y = np.meshgrid(x, y)
     
     # Guess initial parameters
     floor=np.ma.median(data.flatten())
@@ -258,7 +261,7 @@ def fit_circular_moffat(data,init_params={}):
     fwhm=np.sqrt(np.sum((data>floor+amplitude/2.).flatten()))
     beta=3.5
     alpha = 0.5*fwhm/np.sqrt(2.**(1./beta)-1.)
-    initial_guess=(x_mean,y_mean,beta,alpha,amplitude,floor)
+    initial_guess=(amplitude,x_mean,y_mean,beta,alpha,floor)
     
     # Attempt fit and return empty lists if it does not converge
     try:
@@ -269,7 +272,7 @@ def fit_circular_moffat(data,init_params={}):
     fit_result[3]=np.sqrt(2.**(1./beta)-1.)*fit_result[3]*2
     return fit_result,pcov
 
-def elliptical_moffat((x,y),x_mean,y_mean,alpha1,alpha2,beta,angle,amplitude,floor):
+def elliptical_moffat((x,y),amplitude,x_mean,y_mean,alpha1,alpha2,beta,angle,floor):
     """
     Uses 2d array of data to calculate a moffat distribution at the point (x,y), then flattens the data
     into a 1d array for processing.
@@ -321,7 +324,9 @@ def fit_elliptical_moffat(data):
         Covariant matrix that describes the error in the fit (but in an 'unscientific' way).
         This needs to be improved to get accurate error estimates
     """
-    x,y = np.indices(data.shape)
+    x = np.linspace(0, data.shape[1]-1, data.shape[1])
+    y = np.linspace(0, data.shape[0]-1, data.shape[1])
+    x, y = np.meshgrid(x, y)
     
     # Generate initial guess
     floor=np.ma.median(data.flatten())
@@ -333,7 +338,7 @@ def fit_elliptical_moffat(data):
     alpha1 = 0.5*fwhm/np.sqrt(2.**(1./beta)-1.)
     alpha2 = 0.5*fwhm/np.sqrt(2.**(1./beta)-1.)
     angle=0
-    initial_guess=(x_mean,y_mean,alpha1,alpha2,beta,angle,amplitude,floor)
+    initial_guess=(amplitude,x_mean,y_mean,alpha1,alpha2,beta,angle,floor)
     
     # Attempt fit and return empty lists if it does not converge
     try:
@@ -347,12 +352,14 @@ def fit_elliptical_moffat(data):
     fit_result[4]=np.sqrt(2.**(1./beta)-1.)*fit_result[4]*2
     return fit_result,pcov
 
-def circular_gaussian((x,y), x_mean, y_mean, std_dev, amplitude, floor):
+def circular_gaussian((x,y), amplitude, x_mean, y_mean, std_dev, floor):
     gaussian = floor+amplitude*np.exp(-((x-x_mean)**2+(y-y_mean)**2)/(2*std_dev**2))
     return gaussian.ravel()
 
 def fit_circular_gaussian(data):
-    x,y = np.indices(data.shape)
+    x = np.linspace(0, data.shape[1]-1, data.shape[1])
+    y = np.linspace(0, data.shape[0]-1, data.shape[1])
+    x, y = np.meshgrid(x, y)
     # Guess initial parameters
     floor=np.ma.median(data.flatten())
     amplitude=data.max()-floor
@@ -360,7 +367,7 @@ def fit_circular_gaussian(data):
     y_mean=data.shape[0]/2
     mean = data.mean()
     std_dev = 1
-    initial_guess=(x_mean,y_mean,std_dev,amplitude,floor)
+    initial_guess=(amplitude,x_mean,y_mean,std_dev,floor)
     
     # Attempt fit and return empty lists if it does not converge
     try:
@@ -370,7 +377,7 @@ def fit_circular_gaussian(data):
     # Convert alpha into a FWHM
     return fit_result,pcov
 
-def elliptical_gaussian((x,y), x_mean, y_mean, std_x, std_y, theta, amplitude, floor):
+def elliptical_gaussian((x,y), amplitude, x_mean, y_mean, std_x, std_y, theta, floor):
     a = .5*(np.cos(theta)/std_x)**2 + .5*(np.sin(theta)/std_y)**2
     b = -np.sin(2*theta)/(4*std_x**2) + np.sin(2*theta)/(4*std_x**2)
     c = .5*(np.sin(theta)/std_x)**2 + .5*(np.cos(theta)/std_y)**2
@@ -379,9 +386,11 @@ def elliptical_gaussian((x,y), x_mean, y_mean, std_x, std_y, theta, amplitude, f
     return gaussian.ravel()
 
 def fit_elliptical_gaussian(data):
-    x,y = np.indices(data.shape)
+    x = np.linspace(0, data.shape[1]-1, data.shape[1])
+    y = np.linspace(0, data.shape[0]-1, data.shape[1])
+    x, y = np.meshgrid(x, y)
     # Guess initial parameters
-    floor = np.ma.median(data.flatten())
+    floor = np.median(data)
     amplitude = data.max()-floor
     x_mean = data.shape[1]/2
     y_mean = data.shape[0]/2
@@ -389,15 +398,29 @@ def fit_elliptical_gaussian(data):
     std_x = 1
     std_y = 1
     theta = 0
-    initial_guess=(x_mean, y_mean, std_x, std_y, theta, amplitude, floor)
-    
+    initial_guess=(amplitude, x_mean, y_mean, std_x, std_y, theta, 0)
+    print('initial guess', initial_guess)
     # Attempt fit and return empty lists if it does not converge
     try:
         fit_result,pcov=curve_fit(elliptical_gaussian,(x,y),data.ravel(),p0=initial_guess)
+        print('fit result', fit_result)
     except RuntimeError:
         return [],[]
     # Convert alpha into a FWHM
     return fit_result,pcov
+
+def get_centroid(data):
+    """
+    Calculate the center using a weighted average for each point
+    """
+    print('using center of mass')
+    x = np.linspace(0, data.shape[1]-1, data.shape[1])
+    y = np.linspace(0, data.shape[0]-1, data.shape[1])
+    x, y = np.meshgrid(x, y)
+    x = np.average(x, weights=data)
+    y = np.average(y, weights=data)
+    coords = [x,y]
+    return coords, []
 
 # Map fit types to function defined above
 fit_types={
@@ -405,18 +428,18 @@ fit_types={
     'elliptical_moffat': fit_elliptical_moffat,
     'circular_gaussian': fit_circular_gaussian,
     'elliptical_gaussian': fit_elliptical_gaussian,
-    'no fit':None
+    'no_fit': get_centroid
 }
 
 def find_stars(img_data,aperture_type='radius',maxima_size=5,maxima_sigma=2,
                 maxima_footprint=None,aperture_radii=[],threshold=None, saturate=None,
-                margin=None,bin_struct=None,fit_method='elliptical moffat',id=None):
+                margin=None,bin_struct=None,fit_method='elliptical_moffat',id=None):
     """
     Detect possible sources in an image and attempt to fit them to a specified profile.
     
     Parameters
     ----------
-    img_data: 2D numpy array
+    img_data: pandas DataFrame
         Image data
     aperture_type: string
         Type of aperture to use when searching for local maxima. The options are:
@@ -458,9 +481,9 @@ def find_stars(img_data,aperture_type='radius',maxima_size=5,maxima_sigma=2,
     no_fit: numpy structured array
         x and y coordinates of sources that could not be fit
     """
-    from astro_pypelines.utils.fitting_tools import fit_elliptical_moffat
-    
-    # Estimate the background by assuming that the middle 80% of the pixels in the image are background
+    # Estimate the background by assuming that the middle 80% of the pixels in the 
+    # image are background sources (does not work well, it is recommended to set a 
+    # threshold)
     if threshold is None:
         sorted_data=np.sort(img_data.flatten())
         back_min_idx=int(sorted_data.size*0.1)
@@ -485,25 +508,27 @@ def find_stars(img_data,aperture_type='radius',maxima_size=5,maxima_sigma=2,
         if id is None:
             print(id)
         else:
-            core.progress_log(info,id)
+            core.progress_log(info)
     
     # Find all the point sources and their approximate positions
-    sources=detect_sources(img_data,threshold,aperture_type,maxima_size,maxima_footprint,bin_struct,maxima_sigma,saturate,margin)
-    srcIndices=np.where(sources)
+    sources=detect_sources(img_data,threshold,aperture_type,maxima_size,
+        maxima_footprint,bin_struct,maxima_sigma,saturate,margin)
+    src_indices=np.where(sources)
     if id is None:
-        print('Number of stars:',srcIndices[0].size)
+        print('Number of stars:',src_indices[0].size)
     else:
-        core.progress_log('Number of stars: '+str(srcIndices[0].size),id)
+        core.progress_log('Number of stars: '+str(src_indices[0].size))
     
     # Fit the sources to a valid fit method. 
     if fit_method not in fit_types.keys():
-        raise core.AstropypError("Invalid fit method, please choose from '"+"','".join(fit_types))
+        raise astrotoyz.core.AstroToyzError(
+            "Invalid fit method, please choose from '"+"','".join(fit_types))
     
     import time
     t1 = time.time()
     best_fits = fit_elliptical_moffat(img_data.astype('float64'), 
-                    srcIndices[1].astype('int32'), 
-                    srcIndices[0].astype('int32'), 
+                    src_indices[1].astype('int32'), 
+                    src_indices[0].astype('int32'), 
                     aperture_radii[0],threshold)
     best_fits=best_fits.ravel().view(dtype=fit_dtypes['fast'])
     no_fit=[]
@@ -587,15 +612,15 @@ def find_stars_old(img_data,aperture_type='radius',maxima_size=5,maxima_sigma=2,
         if id is None:
             print(id)
         else:
-            core.progress_log(info,id)
+            core.progress_log(info)
     
     # Find all the point sources and their approximate positions
     sources=detect_sources(img_data,threshold,aperture_type,maxima_size,maxima_footprint,bin_struct,maxima_sigma,saturate,margin)
-    srcIndices=np.where(sources)
+    src_indices=np.where(sources)
     if id is None:
-        print('Number of stars:',srcIndices[0].size)
+        print('Number of stars:',src_indices[0].size)
     else:
-        core.progress_log('Number of stars: '+str(srcIndices[0].size),id)
+        core.progress_log('Number of stars: '+str(src_indices[0].size))
     
     # Fit the sources to a valid fit method. 
     if fit_method not in fit_types.keys():
@@ -606,7 +631,7 @@ def find_stars_old(img_data,aperture_type='radius',maxima_size=5,maxima_sigma=2,
         if id is None:
             print('Fitting points')
         else:
-            core.progress_log('Fitting points',id)
+            core.progress_log('Fitting points')
         fit_func=fit_types[fit_method]
         step=0
         if len(aperture_radii)==0:
@@ -614,9 +639,9 @@ def find_stars_old(img_data,aperture_type='radius',maxima_size=5,maxima_sigma=2,
         else:
             step=aperture_radii[0]
         no_fit=np.array([],dtype=fit_dtypes['no fit'])
-        for i in range(len(srcIndices[0])):
-            x=srcIndices[1][i]
-            y=srcIndices[0][i]
+        for i in range(len(src_indices[0])):
+            x=src_indices[1][i]
+            y=src_indices[0][i]
             xMin=max(x-step,0)
             xMax=min(x+step+1,img_data.shape[1])
             yMin=max(y-step,0)
@@ -628,11 +653,11 @@ def find_stars_old(img_data,aperture_type='radius',maxima_size=5,maxima_sigma=2,
                 best_fit['y']=best_fit['y']+yMin
                 best_fits=np.hstack((best_fits,best_fit))
             else:
-                no_fit=np.hstack((no_fit,np.array([tuple((srcIndices[1][i],srcIndices[0][i]))],dtype=fit_dtypes['no fit'])))
+                no_fit=np.hstack((no_fit,np.array([tuple((src_indices[1][i],src_indices[0][i]))],dtype=fit_dtypes['no fit'])))
     else:
-        best_fits=np.empty(len(srcIndices[1]),dtype=fit_dtypes['no fit'])
-        best_fits['x']=srcIndices[1]
-        best_fits['y']=srcIndices[0]
+        best_fits=np.empty(len(src_indices[1]),dtype=fit_dtypes['no fit'])
+        best_fits['x']=src_indices[1]
+        best_fits['y']=src_indices[0]
         no_fit=np.array([],dtype=fit_dtypes['no fit'])
     
     

@@ -10,7 +10,7 @@ from toyz.utils.errors import ToyzJobError
 import astrotoyz as astro
 from toyz.web import session_vars
 
-def get_img_info(toyz_settings, pipe, tid, params):
+def get_img_info(toyz_settings, tid, params):
     """
     Get image info specific to astronomy FITS images (like physical coords, wcs, etc.)
     """
@@ -21,7 +21,7 @@ def get_img_info(toyz_settings, pipe, tid, params):
     }
     return response
 
-def get_img_data(toyz_settings, pipe, tid, params):
+def get_img_data(toyz_settings, tid, params):
     """
     Get data from an image or FITS file
     """
@@ -29,7 +29,7 @@ def get_img_data(toyz_settings, pipe, tid, params):
     response = astro.viewer.get_img_data(**params)
     return response
 
-def get_2d_fit(toyz_settings, pipe, tid, params):
+def get_2d_fit(toyz_settings, tid, params):
     """
     Get desired fit for 2d data array
     """
@@ -38,7 +38,7 @@ def get_2d_fit(toyz_settings, pipe, tid, params):
     response = astro.viewer.get_2d_fit(**params)
     return response
 
-def create_catalog(toyz_settings, pipe, tid, params):
+def create_catalog(toyz_settings, tid, params):
     """
     Save a catalog
     """
@@ -67,7 +67,7 @@ def create_catalog(toyz_settings, pipe, tid, params):
     }
     return response
 
-def save_catalog(toyz_settings, pipe, tid, params):
+def save_catalog(toyz_settings, tid, params):
     """
     Save a catalog
     """
@@ -83,20 +83,25 @@ def save_catalog(toyz_settings, pipe, tid, params):
     }
     return response
 
-def select_src(toyz_settings, pipe, tid, params):
+def select_src(toyz_settings, tid, params):
     """
     Get the nearest source to a given point
     """
     core.check4keys(params, ['cid'])
     catalog = astro.catalog.get_catalog(params['cid'], create='fail')
-    src = catalog.select_src(params['src_info'])
+    src = catalog.select_src(**params)
+    if len(src)>0:
+        status = 'success'
+    else:
+        status = 'failed: no source found'
     response = {
         'id': 'select_src',
+        'status': status,
         'src': src
     }
     return response
 
-def add_src(toyz_settings, pipe, tid, params):
+def add_src(toyz_settings, tid, params):
     """
     Add a source to the catalog
     """
@@ -116,7 +121,7 @@ def add_src(toyz_settings, pipe, tid, params):
     print(catalog)
     return response
 
-def delete_src(toyz_settings, pipe, tid, params):
+def delete_src(toyz_settings, tid, params):
     """
     Delete a source from the catalog
     """

@@ -85,17 +85,19 @@ def get_2d_fit(file_info, fit_type, x, y, width, height, **kwargs):
     hdu = hdulist[int(file_info['frame'])]
     
     # Load user specified tile
-    xmin = max(0, x-(width>>1))
-    ymin = max(0, y-(height>>1))
-    xmax = min(hdu.data.shape[1], xmin+width)
-    ymax = min(hdu.data.shape[0], ymin+height)
+    dx = width>>1
+    dy = height>>1
+    xmin = max(0, x-dx)
+    ymin = max(0, y-dy)
+    xmax = min(hdu.data.shape[1], x+dx)
+    ymax = min(hdu.data.shape[0], y+dy)
     init_data = hdu.data[ymin:ymax,xmin:xmax]
     # Center the tile on the pixel with the highest value
     y_center,x_center = np.unravel_index(init_data.argmax(),init_data.shape)
-    xmin = max(0, xmin+x_center-(width>>1))
-    ymin = max(0, ymin+y_center-(height>>1))
-    xmax = min(hdu.data.shape[1], xmin+width)
-    ymax = min(hdu.data.shape[0], ymin+height)
+    xmin = max(0, xmin+x_center-dx)
+    ymin = max(0, ymin+y_center-dy)
+    xmax = min(hdu.data.shape[1], xmin+width+1)
+    ymax = min(hdu.data.shape[0], ymin+height+1)
     data = hdu.data[ymin:ymax,xmin:xmax]
     
     fit, pcov = astro.detect_sources.fit_types[fit_type](data)

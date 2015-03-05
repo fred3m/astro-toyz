@@ -93,7 +93,7 @@ def build_src_info(catalog, src_info, file_info):
     Default function to build a catalog id by combining the ``ra`` and ``dec`` fields
     (if available) or ``x`` and ``y`` fields into a coordinate pair
     """
-    cid_name = catalog.settings['data']['cid_name']
+    id_name = catalog.settings['data']['id_name']
     ra_name = catalog.settings['data']['ra_name']
     dec_name = catalog.settings['data']['dec_name']
     if ra_name!='ra' and 'ra' in src_info:
@@ -107,9 +107,9 @@ def build_src_info(catalog, src_info, file_info):
         hdulist = toyz.web.viewer.get_file(file_info)
         hdu = hdulist[int(file_info['frame'])]
         coords = SkyCoord(src_info[ra_name], src_info['dec'], unit='deg')
-        src_info[cid_name] = coords.to_string('hmsdms')
+        src_info[id_name] = coords.to_string('hmsdms')
     else:
-        src_info[cid_name] = "{0:.6f},{0:.6f}".format(src_info['x'], src_info['y'])
+        src_info[id_name] = "{0:.6f},{0:.6f}".format(src_info['x'], src_info['y'])
     return src_info
 
 class CatalogMeta(Base):
@@ -233,7 +233,7 @@ class Catalog(pandas.DataFrame):
             'data': {
                 'ra_name': 'ra',
                 'dec_name': 'dec',
-                'cid_name': 'id',
+                'id_name': 'id',
                 'min_sep': {
                     'wcs': [1,'arcsec'],
                     'px': 5
@@ -345,12 +345,13 @@ class Catalog(pandas.DataFrame):
             import astrotoyz.viewer
             import copy
             params = copy.deepcopy(kwargs)
+            
             if 'fit_type' not in params:
-                params['fit_type'] = 'elliptical_moffat'
+                params['fit_type'] = 'elliptical_gaussian'
             if 'width' not in params:
-                params['width'] = 10
+                params['width'] = 20
             if 'height' not in params:
-                params['height'] = 10
+                params['height'] = 20
             fit = astrotoyz.viewer.get_2d_fit(**params)
             if fit['status'] == 'success':
                 src_info = fit['fit']
@@ -358,16 +359,17 @@ class Catalog(pandas.DataFrame):
                 raise astrotoyz.core.AstroToyzError("Fit did not converge")
         return src_info
     
-    def select_src(self, **kwargs):
+    def select_src(self, src_info, file_info, **kwargs):
         """
         Find the object in the catalog the is the nearest neighbor to the current source.
         If the object is within Catalog.settings['minsep'] (``px`` or ``wcs`` depending
         on the coords given) then it is selected
         """
-        src_info = self.get_src_info(**kwargs)
+        kwargs.update(src_info)
+        src_info.update(self.get_src_info(file_info=file_info, **kwargs))
         sep = self.get_min_sep()
         idx, d2d, src = self.get_nearest_neighbors(self, coords=src_info)
-        if d2d<sep:
+        if d2d<sep and d2d:
             src = {s: src[n] for n,s in enumerate(src.keys())}
         else:
             src = {}
@@ -394,7 +396,7 @@ class Catalog(pandas.DataFrame):
             build_module = importlib.import_module(
                 self.settings['data']['build_src_info']['module'])
             src_info = getattr(build_module, build_func)(self, src_info, file_info)
-            self.loc[self.shape[0]] = pandas.Series(src_info)
+            self.loc[src_info[self.settings['data']['id_name']]] = pandas.Series(src_info)
             self.log('add_src', src_info)
             return src_info
         return {}
@@ -403,10 +405,11 @@ class Catalog(pandas.DataFrame):
         """
         Delete a source from the catalog.
         """
-        cid_name = self.settings['data']['cid_name']
-        row = self[self[cid_name]==src_info[cid_name]]
-        self.drop(row.index.values, inplace=True)
+        id_name = self.settings['data']['id_name']
+        row = self.loc[src_info[id_name]]
+        self.drop(src_info[id_name], inplace=True)
         # Notify the user if no matching sources were found
+        print('catalog after delete', self)
         if len(row)==0:
             return False
         return True
@@ -468,4 +471,4 @@ class Catalog(pandas.DataFrame):
 # http://stackoverflow.com/questions/773030/why-are-0d-arrays-in-numpy-not-considered-scalar
         if idx.shape==():
             idx = idx.max()
-        return idx, d2d, self.loc[idx]
+        return idx, d2d, self.loc[self.index[idx]]
