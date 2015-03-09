@@ -151,3 +151,32 @@ def detect_sources(toyz_settings, tid, params):
     }
     print('response', response)
     return response
+
+def wcs2px(toyz_Settings, tid, params):
+    """
+    Align all images in the viewer with the world coordinates of the current image
+    """
+    import toyz.web
+    from astrotoyz.viewer import get_wcs
+    import numpy as np
+    print('filepath:', params['file_info']['filepath'],'\n\n')
+    core.check4keys(params, ['file_info', 'img_info', 'ra', 'dec'])
+    hdulist = toyz.web.viewer.get_file(params['file_info'])
+    wcs = get_wcs(params['file_info'], hdulist)
+    if wcs is None:
+        raise astrotoyz.core.AstroToyzError('Unable to load WCS for the current image')
+    data = hdulist[int(params['file_info']['frame'])].data
+    ra = params['ra']
+    dec = params['dec']
+    wcs_array = wcs.wcs_world2pix(np.array([[ra, dec]]), 1)
+    response = {
+        'id': 'wcs2px',
+        'x': int(round(wcs_array[0][0])),
+        'y': int(round(wcs_array[0][1])),
+        # next two lines for testing
+        'ra': ra,
+        'dec': dec
+    }
+    print('px coords response', response)
+    return response
+    

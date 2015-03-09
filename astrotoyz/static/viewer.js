@@ -102,7 +102,69 @@ Toyz.Astro.Viewer.Controls = function(options){
         input_class: 'viewer-ctrl-button viewer-ctrl-viewer-btn astro-viewer-ctrl-align',
         func: {
             click: function(){
-                // align images based on wcs
+                var viewer_frame = this.viewer_frame;
+                var file_info = $.extend(true, {}, this.frames[viewer_frame].file_info);
+                var img_info = $.extend(true, {}, file_info.images[file_info.frame]);
+                delete file_info.images;
+                delete img_info.tiles;
+                console.log('viewer_frame,x,y', 
+                    viewer_frame,img_info.viewer.x_center,img_info.viewer.y_center);
+                    console.log('viewer filepath', file_info.filepath);
+                this.workspace.websocket.send_task({
+                    task: {
+                        module: 'astrotoyz.tasks',
+                        task: 'get_img_data',
+                        parameters: {
+                            file_info: file_info,
+                            img_info: img_info,
+                            x: img_info.viewer.x_center,
+                            y: img_info.viewer.y_center,
+                            data_type: 'datapoint'
+                        }
+                    },
+                    callback: function(viewer_frame, scale, result){
+                        console.log('img_data result:', result);
+                        for(var i=0; i< this.frames.length; i++){
+                            if(i!=viewer_frame){
+                                console.log('i', i);
+                                console.log('viewer frame', viewer_frame);
+                                var file_info = $.extend(true, {}, 
+                                    this.frames[i].file_info);
+                                var img_info = $.extend(true, {}, 
+                                    file_info.images[file_info.frame]);
+                                    console.log('frame filepath', file_info.filepath);
+                                if(img_info.scale!=scale){
+                                    this.set_scale(i, scale);
+                                };
+                                this.workspace.websocket.send_task({
+                                    task:{
+                                        module: 'astrotoyz.tasks',
+                                        task: 'wcs2px',
+                                        parameters: {
+                                            file_info: file_info,
+                                            img_info: img_info,
+                                            ra: result.ra,
+                                            dec: result.dec
+                                        },
+                                    },
+                                    callback: function(viewer_frame, result){
+                                        console.log('i viewerframe', viewer_frame);
+                                        console.log('wcs2px result', result);
+                                        var file_info = this.frames[viewer_frame].file_info;
+                                        var img_info = file_info.images[file_info.frame];
+                                        var left = result.x-Math.round(img_info.viewer.width/2);
+                                        var top = result.y-Math.round(img_info.viewer.height/2);
+                                        console.log('left', left, 'top', top);
+                                        this.set_window(viewer_frame, left, top);
+                                        console.log('new center', 
+                                            img_info.viewer.x_center, img_info.viewer.y_center);
+                                    }.bind(this, i)
+                                });
+                                console.log('sent');
+                            };
+                        };
+                    }.bind(this, viewer_frame, img_info.scale)
+                })
             }.bind(options.parent)
         },
         prop: {
