@@ -535,7 +535,7 @@ Toyz.Astro.Viewer.Contents = function(params){
     this.catalog_dialog = new Toyz.Astro.Catalog.Dialog(this.dialog_options);
 };
 Toyz.Astro.Viewer.Contents.prototype = new Toyz.Viewer.Contents();
-Toyz.Astro.Viewer.Contents.prototype.onmousemove = function(){
+Toyz.Astro.Viewer.Contents.prototype.onmousemove = function(event){
     // Update the pixel value every 200ms
     var ctrl = this.ctrl_panel.gui.params;
     clearTimeout(this.mousemove_timeout);
