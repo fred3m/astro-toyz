@@ -124,11 +124,11 @@ Toyz.Astro.Catalog.Catalog.prototype.update = function(update){
 };
 Toyz.Astro.Catalog.Catalog.prototype.select_src = function(src){
     if(this.selected!==undefined && this.selected.id==src.src_info.id){
-        this.$selected_marker.remove();
+        this.selected_marker.$circle.remove();
         this.selected = undefined;
         return;
     }else if(this.selected!==undefined){
-        this.$selected_marker.remove();
+        this.selected_marker.$circle.remove();
     };
     this.selected = src;
     this.selected_marker = this.mark_src(src.src_info, {

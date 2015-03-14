@@ -229,7 +229,7 @@ class Catalog(pandas.DataFrame):
         default_settings = {
             'creation': {
                 'creation_time': str(datetime.now()),
-                'fits file': file_info,
+                'fits_file': file_info,
                 'software_version': {
                     'toyz': 'alpha', # TODO: make toyz.version.version work properly
                     'astrotoyz': 'alpha' # TODO: make astrotoyz.version.version work properly
@@ -258,7 +258,7 @@ class Catalog(pandas.DataFrame):
         self.settings = toyz.utils.core.merge_dict(default_settings, settings, True)
         if (self.index.name is None and self.index.names[0] is None and 
                 self.settings['data']['id_name'] in self.columns):
-            self.set_index(self.settings.data.id_name, inplace=True)
+            self.set_index(self.settings['data']['id_name'], inplace=True)
         if log is not None:
             self.log = log
         else:
@@ -406,11 +406,18 @@ class Catalog(pandas.DataFrame):
             # Call a function to configure the source for the current catalog
             # (this can be a user specified function specified when the catalog
             # was created)
-            build_func = self.settings['data']['build_src_info']['func']
             build_module = importlib.import_module(
                 self.settings['data']['build_src_info']['module'])
+            build_func = self.settings['data']['build_src_info']['func']
             src_info = getattr(build_module, build_func)(self, src_info, file_info)
-            self.loc[src_info[self.settings['data']['id_name']]] = pandas.Series(src_info)
+            print('catalog before', self)
+            # Bad fix for adding a new source, need to change this
+            if self.shape[0]==0:
+                for k,v in src_info.items():
+                    self[k] = [v]
+                print('catalog', self)
+            else:
+                self.loc[src_info[self.settings['data']['id_name']]] = pandas.Series(src_info)
             self.log('add_src', src_info)
             return src_info
         return {}
