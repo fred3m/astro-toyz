@@ -309,7 +309,7 @@ Toyz.Astro.Catalog.Dialog = function(options){
                                     filepath: file_info.filepath,
                                     frame: file_info.frame
                                 };
-                                this.workspace.websocket.send_task({
+                                websocket.send_task({
                                     task: {
                                         module: 'astrotoyz.tasks',
                                         task: 'create_catalog',

@@ -110,7 +110,7 @@ Toyz.Astro.Viewer.Controls = function(options){
                 console.log('viewer_frame,x,y', 
                     viewer_frame,img_info.viewer.x_center,img_info.viewer.y_center);
                     console.log('viewer filepath', file_info.filepath);
-                this.workspace.websocket.send_task({
+                websocket.send_task({
                     task: {
                         module: 'astrotoyz.tasks',
                         task: 'get_img_data',
@@ -136,7 +136,7 @@ Toyz.Astro.Viewer.Controls = function(options){
                                 if(img_info.scale!=scale){
                                     this.set_scale(i, scale);
                                 };
-                                this.workspace.websocket.send_task({
+                                websocket.send_task({
                                     task:{
                                         module: 'astrotoyz.tasks',
                                         task: 'wcs2px',
@@ -321,7 +321,7 @@ Toyz.Astro.Viewer.Controls = function(options){
                         var x = xy[0]/img_info.scale;
                         var y = xy[1]/img_info.scale;
                         console.log('x',x,'y',y);
-                        this.workspace.websocket.send_task({
+                        websocket.send_task({
                             task: {
                                 module: 'astrotoyz.tasks',
                                 task: 'add_src',
@@ -371,7 +371,7 @@ Toyz.Astro.Viewer.Controls = function(options){
             click: function(event){
                 var catalog = this.catalog_dialog.get_current_catalog();
                 if(catalog.selected!==undefined){
-                    this.workspace.websocket.send_task({
+                    websocket.send_task({
                         task: {
                             module: 'astrotoyz.tasks',
                             task: 'delete_src',
@@ -431,7 +431,7 @@ Toyz.Astro.Viewer.Controls = function(options){
                 var cid = catalog.cid;
                 // Detect sources and create a catalog
                 console.log('cid', cid);
-                this.workspace.websocket.send_task({
+                websocket.send_task({
                     task: {
                         module: 'astrotoyz.tasks',
                         task: 'detect_sources',
@@ -547,7 +547,7 @@ Toyz.Astro.Viewer.Contents.prototype.onmousemove = function(event){
             var xy = this.extract_coords(event, img_info);
             var x = Math.round(xy[0]/img_info.scale);
             var y = Math.round(xy[1]/img_info.scale);
-            this.workspace.websocket.send_task({
+            websocket.send_task({
                 task: {
                     module: 'astrotoyz.tasks',
                     task: 'get_img_data',
@@ -572,7 +572,7 @@ Toyz.Astro.Viewer.Contents.prototype.get_img_tiles = function(viewer_frame, file
     // If this is the first time accessing the image data load Astro-Toyz specific
     // image information
     if(!img_info.hasOwnProperty('coord_range')){
-        this.workspace.websocket.send_task({
+        websocket.send_task({
             task: {
                 module: 'astrotoyz.tasks',
                 task: 'get_img_info',
@@ -798,7 +798,7 @@ Toyz.Astro.Viewer.HistogramDialog.prototype.update = function(update){
         delete file_info.images;
         delete img_info.tiles;
         var width = this.gui.get().width;
-        this.parent.workspace.websocket.send_task({
+        websocket.send_task({
             task: {
                 module: 'toyz.web.tasks',
                 task: 'get_img_data',
@@ -1140,7 +1140,7 @@ Toyz.Astro.Viewer.SurfaceDialog.prototype.update = function(update){
         delete img_info.tiles;
         var params = this.gui.get();
         var width = this.plot_width;
-        this.parent.workspace.websocket.send_task({
+        websocket.send_task({
             task: {
                 module: 'astrotoyz.tasks',
                 task: 'get_img_data',
