@@ -4,6 +4,9 @@ Configuration file required for all new Toyz
 from __future__ import division,print_function
 import os
 
+
+import astrotoyz.io
+
 ##################
 # Custom Methods #
 ##################
@@ -36,4 +39,23 @@ toyz_urls = {
 # If any tornado.RequestHandler templates have parameters, special functions to render
 # the page must be defined here
 render_functions = {
+}
+
+# Custom IO modules
+io_modules = astrotoyz.io.io_modules
+load_functions = {
+    'astropy_read': astrotoyz.io.astropy_read
+}
+save_functions = {
+    'astropy_write': astrotoyz.io.astropy_write
+}
+
+# Data Types
+data_types = {
+    'astropy.table.table.Table': astrotoyz.data_types.astropy_table
+}
+
+# Source Types
+src_types = {
+    'Catalog': astrotoyz.catalog.Catalog
 }
