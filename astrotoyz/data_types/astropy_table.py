@@ -42,3 +42,6 @@ def to_dict(data, columns):
     import numpy as np
     data_dict = {col: map(isnan, np.array(data[col]).tolist()) for col in columns}
     return data_dict
+
+def remove_rows(data, points):
+    data.remove_rows(points)

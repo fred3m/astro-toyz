@@ -4,6 +4,7 @@ Tasks that can be run from a Toyz web application
 # Copyright 2015 by Fred Moolekamp
 # License: LGPLv3
 from __future__ import division,print_function
+import os
 
 from toyz.utils import core
 from toyz.utils.errors import ToyzJobError
@@ -179,4 +180,45 @@ def wcs2px(toyz_Settings, tid, params):
     }
     print('px coords response', response)
     return response
+
+def load_sextractor(toyz_settings, tid, params):
+    """
+    Load sextractor configuration and parameters
+    """
+    import astrotoyz.sex as sex
+    params, param_order = sex.build_param_gui()
+    response = {
+        'id': 'load_sextractor',
+        'params': params,
+        'param_order': param_order
+    }
+    return response
+
+def run_sextractor(toyz_settings, tid, params):
+    """
+    Run sextractor using parameters defined in the client
+    """
+    import astrotoyz.sex
+    import toyz.utils.db
+    import shutil
     
+    core.check4keys(params, ['config', 'params', 'filename'])
+    shortcuts = toyz.utils.db.get_param(toyz_settings.db, 'shortcuts', user_id=tid['user_id'])
+    # Just in case the user did something dumb, like remove his/her temp path
+    if 'temp' not in shortcuts:
+        raise ToyJobError("You removed your 'temp' shortcut, DON'T DO THAT!" +
+            "Refresh your browser and it will be restored")
+    # Create a path for temporary files that will be erased once this has been completed
+    temp_path = os.path.join(shortcuts['temp'], tid['session_id'], str(tid['request_id']))
+    core.create_paths(temp_path)
+    # Run SExtractor
+    params['temp_path'] = temp_path
+    result = astrotoyz.sex.run_sextractor(**params)
+    # Remove the temporary path form the server
+    #shutil.rmtree(temp_path)
+    
+    response = {
+        'id': 'run_sextractor',
+        'result': result
+    }
+    return response

@@ -170,11 +170,11 @@ Toyz.Astro.Viewer.Controls = function(options){
         prop: {
             type: 'image',
             title: 'align images based on wcs',
-            value: ''
+            src: '/toyz/static/astrotoyz/icons/align.png'
         },
     };
     this.hist = {
-        input_class: 'viewer-ctrl-button viewer-ctrl-tools-btn viewer-ctrl-tools-hist',
+        input_class: 'viewer-ctrl-button viewer-ctrl-tools-btn',
         func: {
             click: function(event){
                 this.change_active_tool('hist', event.currentTarget);
@@ -201,7 +201,7 @@ Toyz.Astro.Viewer.Controls = function(options){
         prop: {
             type: 'image',
             title: 'get histogram',
-            value: ''
+            src: '/static/web/static/button_icons/histogram.png'
         },
         events: {
             mousedown: function(event){
@@ -224,7 +224,7 @@ Toyz.Astro.Viewer.Controls = function(options){
         }
     };
     this.surface = {
-        input_class: 'viewer-ctrl-button viewer-ctrl-tools-btn viewer-ctrl-tools-surface',
+        input_class: 'viewer-ctrl-button viewer-ctrl-tools-btn',
         func: {
             click: function(event){
                 this.change_active_tool('surface', event.currentTarget);
@@ -260,7 +260,7 @@ Toyz.Astro.Viewer.Controls = function(options){
         prop: {
             type: 'image',
             title: 'get surface plot',
-            value: ''
+            src: '/static/web/static/button_icons/surface.png'
         },
         events: {
             mousedown: function(event){
@@ -283,8 +283,7 @@ Toyz.Astro.Viewer.Controls = function(options){
         }
     };
     this.select_star = {
-        input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn ' +
-                    'astro-viewer-ctrl-selectstar',
+        input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn ',
         func: {
             click: function(event){
                 this.change_active_tool('select_star', event.currentTarget);
@@ -293,15 +292,15 @@ Toyz.Astro.Viewer.Controls = function(options){
         prop: {
             type: 'image',
             title: 'select catalog source',
-            value: ''
+            src: '/toyz/static/astrotoyz/icons/selectstar.png'
         }
     },
     this.add_star = {
-        input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn astro-viewer-ctrl-addstar',
+        input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn',
         prop: {
             type: 'image',
             title: 'add point source to catalog',
-            value: ''
+            src: '/toyz/static/astrotoyz/icons/addstar.png'
         },
         func: {
             click: function(event){
@@ -360,12 +359,11 @@ Toyz.Astro.Viewer.Controls = function(options){
         }
     };
     this.delete_star = {
-        input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn '+
-                    'astro-viewer-ctrl-deletestar',
+        input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn',
         prop: {
             type: 'image',
             title: 'delete point source from catalog',
-            value: ''
+            src: '/toyz/static/astrotoyz/icons/deletestar.png'
         },
         func: {
             click: function(event){
@@ -397,7 +395,7 @@ Toyz.Astro.Viewer.Controls = function(options){
         prop: {
             type: 'image',
             title: 'Open catalog dialog',
-            value: ''
+            src: '/toyz/static/astrotoyz/icons/catalog.png'
         },
         func: {
             click: function(){
@@ -406,11 +404,11 @@ Toyz.Astro.Viewer.Controls = function(options){
         } 
     };
     this.detect_stars = {
-        input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn astro-viewer-ctrl-detect',
+        input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn',
         prop: {
             type: 'image',
             title: 'detect point sources',
-            value: ''
+            src: '/toyz/static/astrotoyz/icons/detect.png'
         },
         func: {
             click: function(){
@@ -464,11 +462,11 @@ Toyz.Astro.Viewer.Controls = function(options){
         }
     };
     this.refresh = {
-        input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn astro-viewer-ctrl-refresh',
+        input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn',
         prop: {
             type: 'image',
             title: 'refresh the src catalog',
-            value: ''
+            src: '/toyz/static/astrotoyz/icons/refresh.png'
         },
         func: {
             click: function(){
@@ -477,11 +475,11 @@ Toyz.Astro.Viewer.Controls = function(options){
         }
     };
     this.redraw = {
-        input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn astro-viewer-ctrl-refresh',
+        input_class: 'viewer-ctrl-button astro-viewer-ctrl-astro-btn',
         prop: {
             type: 'image',
-            title: 'refresh the src catalog',
-            value: ''
+            title: 'redraw the src catalog',
+            src: '/toyz/static/astrotoyz/icons/redraw.png'
         },
         func: {
             click: function(){

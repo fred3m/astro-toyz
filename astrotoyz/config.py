@@ -4,7 +4,6 @@ Configuration file required for all new Toyz
 from __future__ import division,print_function
 import os
 
-
 import astrotoyz.io
 
 ##################

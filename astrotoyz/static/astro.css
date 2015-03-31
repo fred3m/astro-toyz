@@ -7,15 +7,6 @@
 .astro-viewer-ctrl-astro-btn {
     background-color: #FF4D4D;
 }
-.astro-viewer-ctrl-align {
-    background-image:url(/toyz/static/astrotoyz/icons/align.png);
-}
-.astro-viewer-ctrl-catalog {
-    background-image:url(/toyz/static/astrotoyz/icons/catalog.png);
-}
-.astro-viewer-ctrl-detect {
-    background-image:url(/toyz/static/astrotoyz/icons/detect.png);
-}
 .astro-viewer-ctrl-visibility{
     background-position:center;
     background-repeat:no-repeat;
@@ -24,20 +15,8 @@
     width: 15px;
     cursor:pointer;
 }
-.astro-viewer-ctrl-visible {
-    background-image:url(/toyz/static/astrotoyz/icons/visible.png);
-}
 .astro-viewer-ctrl-invisible {
     background-image:url(/toyz/static/astrotoyz/icons/invisible.png);
-}
-.astro-viewer-ctrl-selectstar {
-    background-image:url(/toyz/static/astrotoyz/icons/selectstar.png);
-}
-.astro-viewer-ctrl-addstar {
-    background-image:url(/toyz/static/astrotoyz/icons/addstar.png);
-}
-.astro-viewer-ctrl-deletestar {
-    background-image:url(/toyz/static/astrotoyz/icons/deletestar.png);
 }
 .astro-viewer-catalog-ctrl {
     float: left;
