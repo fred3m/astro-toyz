@@ -217,8 +217,14 @@ def run_sextractor(toyz_settings, tid, params):
     # Remove the temporary path form the server
     #shutil.rmtree(temp_path)
     
-    response = {
-        'id': 'run_sextractor',
-        'result': result
-    }
+    if result!='success':
+        response = {
+            'id': 'ERROR',
+            'error': result
+        }
+    else:
+        response = {
+            'id': 'run_sextractor',
+            'result': result
+        }
     return response

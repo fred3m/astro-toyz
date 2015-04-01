@@ -204,7 +204,7 @@ def run_sextractor(filename, temp_path, config, params, frames=None, config_file
     if frames is not None:
         filenames = []
         for f in frames.split(','):
-            filenames.append(filename+'['+f+']')
+            filenames.append(filename+'['+str(int(f)-1)+']')
     else:
         filenames = [filename]
     sex_cmd = 'sex'
@@ -225,10 +225,14 @@ def run_sextractor(filename, temp_path, config, params, frames=None, config_file
     # Run SExtractor
     for f in filenames:
         this_cmd = sex_cmd+' '+f
-        #p = subprocess.call(this_cmd, shell=True)
         p = subprocess.Popen(this_cmd, shell=True, stdout=subprocess.PIPE, 
             stderr=subprocess.STDOUT)
     
     output = p.stdout.readlines()
+    status =  'success'
+    for line in output:
+        if 'error' in line.lower():
+            status = line
+            break
     
-    return output
+    return status
