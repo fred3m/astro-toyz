@@ -135,6 +135,54 @@ def build_param_gui():
     }
     return gui, param_order
 
+def extract_tbl(filename, n):
+    from astropy.table import Table
+    tbl = Table.read(filename, hdu=n*2)
+    if 'EXT_NUMBER' not in tbl.colnames:
+        tbl['EXT_NUMBER'] = n
+    return tbl
+
+def get_ldac_catalog(filename, frame=None):
+    """
+    Load a SExtractor FITS_LDAC catalog and its configuration parameters. If the user specifies
+    a frame, only return the catalog for that frame
+    """
+    from astropy.table import vstack
+    import astropy.io.fits as pyfits
+    import numpy as np
+    from collections import OrderedDict
+    
+    cat = pyfits.open(filename)
+    hdu_count = (len(cat)-1)/2
+    if int(hdu_count)!=hdu_count:
+        raise AstroSexError("Unexpected number of columns in catalog file")
+    hdu_count = int(hdu_count)
+    
+    # Extract the SExtractor info from the catalog
+    info = cat[1].data[0][0]
+    info = info[np.core.defchararray.startswith(info, 'SEX')]
+    meta = OrderedDict()
+    for i in info:
+        k, v  = i.split('=')
+        val_split = v.split('/')
+        val = val_split[0].strip()
+        desc = ' '.join(val_split[1:]).strip()
+        meta[k.strip()] = {
+            'value': val,
+            'description': desc
+        }
+    
+    if frame is None:
+        data = extract_tbl(filename, 1)
+        # Extract Table info from the catalog
+        for n in range(1,hdu_count+1):
+            new_data = extract_tbl(filename, n)
+            data = vstack([data, new_data])
+    else:
+        data = extract_tbl(filename, frame)
+    
+    return meta, data
+    
 def run_sextractor(filename, temp_path, config, params, frames=None, config_file=None):
     """
     Run SExtractor given a set of parameters and config options
@@ -149,6 +197,7 @@ def run_sextractor(filename, temp_path, config, params, frames=None, config_file
         for p in params:
             f.write(p+'\n')
         f.close()
+        config['PARAMETERS_NAME'] = param_name
     # Check that the user chose a valid filename
     #if not os.path.isfile(filename):
     #    raise AstroSexError("Image file not found")
@@ -164,11 +213,22 @@ def run_sextractor(filename, temp_path, config, params, frames=None, config_file
         sex_cmd += ' -c '+config_file
     # Add on any user specified parameters
     for param in config:
-        sex_cmd += ' -'+param+' '+config[param]
+        if isinstance(config[param], bool):
+            if config[param]:
+                val='Y'
+            else:
+                val='N'
+        else:
+            val = config[param]
+        sex_cmd += ' -'+param+' '+val
     
     # Run SExtractor
     for f in filenames:
         this_cmd = sex_cmd+' '+f
-        print(this_cmd)
+        #p = subprocess.call(this_cmd, shell=True)
+        p = subprocess.Popen(this_cmd, shell=True, stdout=subprocess.PIPE, 
+            stderr=subprocess.STDOUT)
     
-    return this_cmd
+    output = p.stdout.readlines()
+    
+    return output
