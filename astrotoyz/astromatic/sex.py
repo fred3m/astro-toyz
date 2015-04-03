@@ -183,7 +183,8 @@ def get_ldac_catalog(filename, frame=None):
     
     return meta, data
     
-def run_sextractor(filename, temp_path, config, params=None, frames=None, config_file=None):
+def run_sextractor(filename, temp_path, config, params=None, frames=None, config_file=None,
+        store_output=True):
     """
     Run SExtractor given a set of parameters and config options
     """
@@ -225,10 +226,14 @@ def run_sextractor(filename, temp_path, config, params=None, frames=None, config
     # Run SExtractor
     for f in filenames:
         this_cmd = sex_cmd+' '+f
-        p = subprocess.Popen(this_cmd, shell=True, stdout=subprocess.PIPE, 
-            stderr=subprocess.STDOUT)
+        if store_output:
+            p = subprocess.Popen(this_cmd, shell=True, stdout=subprocess.PIPE, 
+                stderr=subprocess.STDOUT)
+        else:
+            subprocess.call(this_cmd, shell=True)
     
-    output = p.stdout.readlines()
+    if store_output:
+        output = p.stdout.readlines()
     status =  'success'
     for line in output:
         if 'error' in line.lower():
