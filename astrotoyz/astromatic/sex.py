@@ -183,7 +183,7 @@ def get_ldac_catalog(filename, frame=None):
     
     return meta, data
     
-def run_sextractor(filename, temp_path, config, params, frames=None, config_file=None):
+def run_sextractor(filename, temp_path, config, params=None, frames=None, config_file=None):
     """
     Run SExtractor given a set of parameters and config options
     """

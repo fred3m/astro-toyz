@@ -185,7 +185,7 @@ def load_sextractor(toyz_settings, tid, params):
     """
     Load sextractor configuration and parameters
     """
-    import astrotoyz.sex as sex
+    import astrotoyz.astromatic.sex as sex
     params, param_order = sex.build_param_gui()
     response = {
         'id': 'load_sextractor',
@@ -198,7 +198,7 @@ def run_sextractor(toyz_settings, tid, params):
     """
     Run sextractor using parameters defined in the client
     """
-    import astrotoyz.sex
+    import astrotoyz.astromatic.sex as sex
     import toyz.utils.db
     import shutil
     
@@ -213,7 +213,7 @@ def run_sextractor(toyz_settings, tid, params):
     core.create_paths(temp_path)
     # Run SExtractor
     params['temp_path'] = temp_path
-    result = astrotoyz.sex.run_sextractor(**params)
+    result = sex.run_sextractor(**params)
     # Remove the temporary path form the server
     #shutil.rmtree(temp_path)
     
