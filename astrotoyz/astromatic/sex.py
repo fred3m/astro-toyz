@@ -232,12 +232,13 @@ def run_sextractor(filename, temp_path, config, params=None, frames=None, config
         else:
             subprocess.call(this_cmd, shell=True)
     
+    status =  'success'
+    
     if store_output:
         output = p.stdout.readlines()
-    status =  'success'
-    for line in output:
-        if 'error' in line.lower():
-            status = line
-            break
+        for line in output:
+            if 'error' in line.lower():
+                status = line
+                break
     
     return status
