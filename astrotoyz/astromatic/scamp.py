@@ -28,12 +28,16 @@ def get_version():
             break
     return version, date
 
-def run_scamp(temp_path, config, config_file=None, store_output=False):
+def run_scamp(filenames, temp_path, config, config_file=None, store_output=False):
     """
     Run SCAMP given a set of config options
     """
     import toyz.utils.core
     import os.path
+    
+    # If a single catalog is passed, convert to an array
+    if not isinstance(filenames, list):
+        filenames = [filenames]
     
     scamp_cmd = 'scamp'
     # If the user specified a config file, use it
@@ -51,12 +55,14 @@ def run_scamp(temp_path, config, config_file=None, store_output=False):
         scamp_cmd += ' -'+param+' '+val
     
     # Run SCAMP
-    print(scamp_cmd,'\n')
-    if store_output:
-        p = subprocess.Popen(scamp_cmd, shell=True, stdout=subprocess.PIPE, 
-            stderr=subprocess.STDOUT)
-    else:
-        subprocess.call(scamp_cmd, shell=True)
+    for f in filenames:
+        this_cmd = scamp_cmd+' '+f
+        print(this_cmd, '\n')
+        if store_output:
+            p = subprocess.Popen(this_cmd, shell=True, stdout=subprocess.PIPE, 
+                stderr=subprocess.STDOUT)
+        else:
+            subprocess.call(this_cmd, shell=True)
     
     status =  'success'
     
