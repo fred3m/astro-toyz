@@ -200,8 +200,8 @@ def run_sextractor(filename, temp_path, config, params=None, frames=None, config
         f.close()
         config['PARAMETERS_NAME'] = param_name
     # Check that the user chose a valid filename
-    #if not os.path.isfile(filename):
-    #    raise AstroSexError("Image file not found")
+    if not os.path.isfile(filename):
+        raise AstroSexError("Image file not found")
     if frames is not None:
         filenames = []
         for f in frames.split(','):
@@ -226,6 +226,7 @@ def run_sextractor(filename, temp_path, config, params=None, frames=None, config
     # Run SExtractor
     for f in filenames:
         this_cmd = sex_cmd+' '+f
+        print(this_cmd, '\n')
         if store_output:
             p = subprocess.Popen(this_cmd, shell=True, stdout=subprocess.PIPE, 
                 stderr=subprocess.STDOUT)
