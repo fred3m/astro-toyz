@@ -38,7 +38,7 @@ def run_scamp(temp_path, config, config_file=None, store_output=False):
     scamp_cmd = 'scamp'
     # If the user specified a config file, use it
     if config_file is not None:
-        sex_cmd += ' -c '+config_file
+        scamp_cmd += ' -c '+config_file
     # Add on any user specified parameters
     for param in config:
         if isinstance(config[param], bool):
