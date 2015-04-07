@@ -184,7 +184,7 @@ def get_ldac_catalog(filename, frame=None):
     return meta, data
     
 def run_sextractor(filename, temp_path, config, params=None, frames=None, config_file=None,
-        store_output=True):
+        store_output=True, sex_cmd='sex'):
     """
     Run SExtractor given a set of parameters and config options
     """
@@ -208,7 +208,6 @@ def run_sextractor(filename, temp_path, config, params=None, frames=None, config
             filenames.append(filename+'['+str(int(f)-1)+']')
     else:
         filenames = [filename]
-    sex_cmd = 'sex'
     # If the user specified a config file, use it
     if config_file is not None:
         sex_cmd += ' -c '+config_file

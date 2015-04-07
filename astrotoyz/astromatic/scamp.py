@@ -28,7 +28,8 @@ def get_version():
             break
     return version, date
 
-def run_scamp(filenames, temp_path, config, config_file=None, store_output=False):
+def run_scamp(filenames, temp_path, config, config_file=None, store_output=False,
+        scamp_cmd='scamp'):
     """
     Run SCAMP given a set of config options
     """
@@ -39,7 +40,6 @@ def run_scamp(filenames, temp_path, config, config_file=None, store_output=False
     if not isinstance(filenames, list):
         filenames = [filenames]
     
-    scamp_cmd = 'scamp'
     # If the user specified a config file, use it
     if config_file is not None:
         scamp_cmd += ' -c '+config_file
