@@ -165,4 +165,29 @@ class Astromatic:
                     status = line
                     break
         return status
-            
+    def get_version(self, cmd=None):
+        # Get the correct command for the given code (if one is not specified)
+        if cmd is None:
+            if self.code not in codes:
+                raise AstromaticError(
+                    "You must either supply a valid astromatic 'code' name or a 'cmd'")
+            cmd = codes[self.code]
+        if cmd[-1]!=' ':
+            cmd += ' '
+        cmd += '-v'
+        try:
+            p = subprocess.Popen('sex', shell=True, stdout=subprocess.PIPE, 
+                stderr=subprocess.STDOUT)
+        except:
+            raise AstroSexError("Unable to run '{0}'. "
+                "Please check that it is installed correctly".format(cmd))
+        for line in p.stdout.readlines():
+            line_split = line.split()
+            line_split = map(lambda x: x.lower(), line_split)
+            if 'version' in line_split:
+                version_idx = line_split.index('version')
+                version = line_split[version_idx+1]
+                date = line_split[version_idx+2]
+                date = date.lstrip('(').rstrip(')')
+                break
+        return version, date
