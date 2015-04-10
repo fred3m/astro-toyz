@@ -132,7 +132,7 @@ class Astromatic:
         else:
             flag_img = None
         if 'WEIGHT_IMAGE' in kwargs['config']:
-            weight_img = kwargs['WEIGHT_IMAGE']
+            weight_img = kwargs['config']['WEIGHT_IMAGE']
         else:
             weight_img = None
         for frame in frames.split(','):
