@@ -205,7 +205,7 @@ def run_sextractor(filename, temp_path, config, params=None, frames=None, config
     if frames is not None:
         filenames = []
         for f in frames.split(','):
-            filenames.append(filename+'['+str(int(f)-1)+']')
+            filenames.append(filename+'['+f+']')
     else:
         filenames = [filename]
     # If the user specified a config file, use it
