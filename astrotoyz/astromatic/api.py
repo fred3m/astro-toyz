@@ -80,8 +80,7 @@ class Astromatic:
         if cmd[-1]!=' ':
             cmd += ' '
         # Append the filename(s) that are run by the code
-        for f in filenames:
-            cmd += f
+        cmd += ' '.join(filenames)
         # If the user specified a config file, use it
         if kwargs['config_file'] is not None:
             cmd += ' -c '+kwargs['config_file']
