@@ -51,7 +51,7 @@ def get_img_data(data_type, file_info, img_info, **kwargs):
         response.update(fit_response['fit'])
     
     # Now add WCS info
-    if file_info['ext'].lower() == 'fits' or file_info['ext'].lower() == 'fits.fz':
+    if file_info['ext'].lower().endswith('.fits') or file_info['ext'].lower().endswith('.fits.fz'):
         hdulist = toyz.web.viewer.get_file(file_info)
         data = hdulist[int(img_info['frame'])].data
         wcs = get_wcs(file_info, hdulist)
@@ -65,7 +65,7 @@ def get_img_data(data_type, file_info, img_info, **kwargs):
     return response
 
 def get_img_info(file_info, img_info, **kwargs):
-    if file_info['ext'].lower() == 'fits' or file_info['ext'].lower() == 'fits.fz':
+    if file_info['ext'].lower().endswith('.fits') or file_info['ext'].lower().endswith('.fits.fz'):
         hdulist = toyz.web.viewer.get_file(file_info)
         hdu = hdulist[int(file_info['frame'])]
         try:
