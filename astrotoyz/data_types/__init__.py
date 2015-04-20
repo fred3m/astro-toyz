@@ -1,1 +1,1 @@
-import astropy_table
+from astrotoyz.data_types import astropy_table

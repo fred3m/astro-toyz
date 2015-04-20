@@ -108,7 +108,7 @@ class Astromatic:
                 stderr=subprocess.STDOUT)
         else:
             subprocess.call(this_cmd, shell=True)
-    
+        
         status =  'success'
         # Check for errors
         if kwargs['store_output']:

@@ -487,6 +487,19 @@ Toyz.Astro.Viewer.Controls = function(options){
             }.bind(options.parent)
         }
     };
+    this.astrometry = {
+        input_class: 'viewer-ctrl-button ',
+        prop: {
+            type: 'image',
+            title: 'calculate astrometric solution',
+            src: ''
+        },
+        func: {
+            click: function(){
+                
+            }
+        }
+    };
 }
 
 Toyz.Astro.Viewer.contextMenu_items = function(workspace, tile_contents, options){
