@@ -30,25 +30,17 @@ setup(name=PACKAGE_NAME,
     description=DESCRIPTION,
     packages=packages,
     scripts=scripts,
-    requires=[
-        'tornado',
-        'toyz',
-        'numpy',
-        'astropy',
-        'scipy'
-    ],
     install_requires=[
-        'tornado',
         'toyz',
-        'numpy',
+        'scipy>=0.15',
         'astropy',
-        'scipy'
+        'matplotlib'
     ],
     extras_require={
         'all': [
-            'astropy',
             'sqlalchemy',
-            'toyz'
+            'pillow',
+            'pandas>=0.14',
         ]
     },
     #provides=[PACKAGE_NAME],
