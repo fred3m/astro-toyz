@@ -56,5 +56,5 @@ data_types = {
 
 # Source Types
 src_types = {
-    'Catalog': astrotoyz.catalog.Catalog
+    #'Catalog': astrotoyz.catalog.Catalog
 }
