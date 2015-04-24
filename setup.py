@@ -44,6 +44,13 @@ setup(name=PACKAGE_NAME,
         'astropy',
         'scipy'
     ],
+    extras_require={
+        'all': [
+            'astropy',
+            'sqlalchemy',
+            'toyz'
+        ]
+    },
     #provides=[PACKAGE_NAME],
     author=AUTHOR,
     author_email=AUTHOR_EMAIL,
