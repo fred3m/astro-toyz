@@ -31,7 +31,7 @@ class Astromatic:
         self.code = code
         if code not in codes:
             print("Warning: '{0} not in Astromatic codes, you will need to specify " +
-                "a 'cmd' to run".foramt(code))
+                "a 'cmd' to run".format(code))
         self.temp_path = temp_path
         self.config = config
         self.config_file = config_file
