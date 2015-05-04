@@ -112,11 +112,12 @@ class Astromatic:
         status =  'success'
         # Check for errors
         if kwargs['store_output']:
-            status = p.stdout.readlines()
+            output = p.stdout.readlines()
             for line in output:
                 if 'error' in line.lower():
                     status = line
                     break
+            return output
         return status
     
     def run_sex_frames(self, filenames, frames='1', show_all_cmds=False, **kwargs):
