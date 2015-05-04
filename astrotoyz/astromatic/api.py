@@ -112,7 +112,7 @@ class Astromatic:
         status =  'success'
         # Check for errors
         if kwargs['store_output']:
-            output = p.stdout.readlines()
+            status = p.stdout.readlines()
             for line in output:
                 if 'error' in line.lower():
                     status = line
