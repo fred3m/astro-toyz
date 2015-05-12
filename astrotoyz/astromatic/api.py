@@ -80,6 +80,15 @@ def convert_table_to_ldac(tbl, temp_path, overwrite=False):
     new_hdulist = fits.HDUList(new_hdulist)
     return new_hdulist
 
+def get_table_from_ldac(filename, frame=1):
+    from astropy.table import Table
+    # Since the ldac format has column info for odd tables, match the
+    # frame of a table to its corresponding frame in the ldac file
+    if frame>0:
+        frame = frame*2
+    tbl = Table.read(filename, hdu=frame)
+    return tbl
+
 class Astromatic:
     """
     Class to hold config options for an Astrometric code. 
