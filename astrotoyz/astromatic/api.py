@@ -22,6 +22,64 @@ codes = {
 class AstromaticError(ToyzError):
     pass
 
+def convert_hdu_to_ldac(hdu):
+    """
+    Convert an hdu table to a fits_ldac table (format used by astromatic suite)
+    
+    Parameters
+    ----------
+    hdu: `astropy.io.fits.BinTableHDU` or `astropy.io.fits.TableHDU`
+        HDUList to convert to fits_ldac HDUList
+    
+    Returns
+    -------
+    tbl1: `astropy.io.fits.BinTableHDU`
+        Header info for fits table (LDAC_IMHEAD)
+    tbl2: `astropy.io.fits.BinTableHDU`
+        Data table (LDAC_OBJECTS)
+    """
+    from astropy.io import fits
+    import numpy as np
+    tblhdr = np.array([hdu.header.tostring(',')])
+    col1 = fits.Column(name='Field Header Card', array=tblhdr, format='13200A')
+    cols = fits.ColDefs([col1])
+    tbl1 = fits.BinTableHDU.from_columns(cols)
+    tbl1.header['TDIM1'] = '(80, {0})'.format(len(hdu.header))
+    tbl1.header['EXTNAME'] = 'LDAC_IMHEAD'
+
+    dcol = fits.ColDefs(hdu.data)
+    tbl2 = fits.BinTableHDU.from_columns(dcol)
+    tbl2.header['EXTNAME'] = 'LDAC_OBJECTS'
+    return (tbl1, tbl2)
+
+def convert_table_to_ldac(tbl, temp_path, overwrite=False):
+    """
+    Convert an astropy table to a fits_ldac
+    
+    Parameters
+    ----------
+    tbl: `astropy.table.Table`
+        Table to convert to ldac format
+    temp_path: str
+        Path to store a temporary file. This is needed because astropy Tables
+        cannot be saved to temporary fits files at the moment
+    overwrite: bool
+        Whether or not to overwrite an existing file ``temp_path``
+    
+    Returns
+    -------
+    hdulist: `astropy.io.fits.HDUList`
+        FITS_LDAC hdulist that can be read by astromatic software
+    """
+    from astropy.io import fits
+    tbl.write(temp_path, format='fits', overwrite=overwrite)
+    # Convert the fits file to a fits_ldac file
+    hdulist = fits.open(temp_path)
+    tbl1, tbl2 = convert_hdu_to_ldac(hdulist[1])
+    new_hdulist = [hdulist[0], tbl1, tbl2]
+    new_hdulist = fits.HDUList(new_hdulist)
+    return new_hdulist
+
 class Astromatic:
     """
     Class to hold config options for an Astrometric code. 
