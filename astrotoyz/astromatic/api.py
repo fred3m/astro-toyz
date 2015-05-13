@@ -46,9 +46,7 @@ def convert_hdu_to_ldac(hdu):
     tbl1 = fits.BinTableHDU.from_columns(cols)
     tbl1.header['TDIM1'] = '(80, {0})'.format(len(hdu.header))
     tbl1.header['EXTNAME'] = 'LDAC_IMHEAD'
-
-    dcol = fits.ColDefs(hdu.data)
-    tbl2 = fits.BinTableHDU.from_columns(dcol)
+    tbl2 = fits.BinTableHDU(hdu.data)
     tbl2.header['EXTNAME'] = 'LDAC_OBJECTS'
     return (tbl1, tbl2)
 
