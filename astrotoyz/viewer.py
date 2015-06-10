@@ -28,7 +28,21 @@ def get_wcs(file_info, hdulist):
         frame = int(file_info['frame'])
         session_vars.wcs_info['filepath'] = file_info['filepath']
         session_vars.wcs_info['frame'] = frame
-        session_vars.wcs_info['wcs'] = pywcs.WCS(hdulist[frame].header)
+        try:
+            session_vars.wcs_info['wcs'] = pywcs.WCS(hdulist[frame].header)
+        except pywcs.InvalidTransformError:
+            # Sometimes PV keywords are not erased from the header when it
+            # is converted from TPV to TAN, so if the CTYPE is TAN we
+            # remove the useless PV cards from the header to get a 
+            # valid WCS
+            header = hdulist[frame].header
+            if 'TAN' in header['CTYPE1']:
+                bad_cards = [card for card in header if card.startswith('PV')]
+                for card in bad_cards:
+                    del header[card]
+                session_vars.wcs_info['wcs'] = pywcs.WCS(header)
+            else:
+                session_vars.wcs_info = {}
     return session_vars.wcs_info['wcs']
 
 def get_img_data(data_type, file_info, img_info, **kwargs):
