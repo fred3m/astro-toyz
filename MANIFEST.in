@@ -20,3 +20,7 @@ exclude astropy_helpers/.git
 exclude astropy_helpers/.gitignore
 
 global-exclude *.pyc *.o
+recursive-include astrotoyz *
+
+exclude .git
+exclude .gitignore
