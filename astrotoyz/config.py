@@ -50,11 +50,12 @@ save_functions = {
 }
 
 # Data Types
-data_types = {
-    'astropy.table.table.Table': astrotoyz.data_types.astropy_table
-}
+#data_types = {
+#    'astropy.table.table.Table': astrotoyz.data_types.astropy_table
+#}
 
 # Source Types
 src_types = {
     #'Catalog': astrotoyz.catalog.Catalog
+    'AstropyTable': astrotoyz.data_types.astropy_table.AstropyTable
 }
