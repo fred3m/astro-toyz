@@ -75,7 +75,7 @@ class DecamFiles(Base):
     EXPNUM = Column(String, ForeignKey('decam_obs.expnum'), index=True)
     decam_obs = relationship(DecamObs, backref=backref('decam_files', uselist=True))
 
-def create_idx(connection=None):
+def create(connection=None):
     """
     Create or clear a set of tables for a decam file index and create the decam_keys
     table to link decam headers to table columns
@@ -111,7 +111,7 @@ def get_dirs(path):
 def get_files(path):
     return [f for f in os.listdir(path) if os.path.isfile(os.path.join(path,f))]
 
-def build_idx(img_path='.', connection=None, create_new=False, recursive=False, no_warnings=True):
+def build(img_path='.', connection=None, create_new=False, recursive=False, no_warnings=True):
     """
     Given a path to a set of decamfiles
     """
@@ -182,7 +182,7 @@ def build_idx(img_path='.', connection=None, create_new=False, recursive=False, 
     session.commit()
     session.close()
 
-def query_idx(sql='select * from decam_files where PROCTYPE=="InstCal"', connection=None):
+def query(sql='select * from decam_files where PROCTYPE=="InstCal"', connection=None):
     """
     Query a decam index
     
