@@ -114,7 +114,7 @@ setup(name=PACKAGENAME,
           'all': [
               'toyz',
               'scipy>=0.15',
-              'matplotlib'
+              'matplotlib',
               'sqlalchemy',
               'pillow',
               'pandas>=0.14',
