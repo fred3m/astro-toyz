@@ -15,9 +15,9 @@ advantage of data reduction tools with limited to no programming necessary.
 ##Installation
 Copy or clone the astro-toyz repository to your local machine
 
-    git clone https://github.com/fred3m/toyz .
+    git clone https://github.com/fred3m/astro-toyz .
 
-Then run 
+Then enter the 'astro-toyz' directory and run
 
     python setup.py install
 
