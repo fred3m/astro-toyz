@@ -43,8 +43,8 @@ LONG_DESCRIPTION = package.__doc__
 builtins._ASTROPY_PACKAGE_NAME_ = PACKAGENAME
 
 # VERSION should be PEP386 compatible (http://www.python.org/dev/peps/pep-0386)
-#VERSION = '0.0.dev'
-VERSION = '0.1.0'
+VERSION = '0.1.4dev'
+#VERSION = '0.1.4'
 
 # Indicates if this version is a release version
 RELEASE = 'dev' not in VERSION
@@ -101,19 +101,19 @@ package_info['package_data'][PACKAGENAME].extend(c_files)
 # ``setup``, since these are now deprecated. See this link for more details:
 # https://groups.google.com/forum/#!topic/astropy-dev/urYO8ckB2uM
 
+print package_info
+
 setup(name=PACKAGENAME,
       version=VERSION,
       description=DESCRIPTION,
       scripts=scripts,
-      install_requires=['astropy'],
+      install_requires=['numpy>=1.5.1','astropy', 'toyz>=1.0'],
       extras_require={
           'base': [
-              'toyz',
               'scipy>=0.15',
               'matplotlib',
           ],
           'all': [
-              'toyz',
               'scipy>=0.15',
               'matplotlib',
               'sqlalchemy',

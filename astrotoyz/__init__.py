@@ -13,10 +13,9 @@ from ._astropy_init import *
 # For egg_info test builds to pass, put package imports here.
 if not _ASTROPY_SETUP_:
     from example_mod import *
-
-from astrotoyz import tasks
-from astrotoyz import viewer
-from astrotoyz import detect_sources
-from astrotoyz import io
-from astrotoyz import data_types
-from astrotoyz import config
+    from astrotoyz import tasks
+    from astrotoyz import viewer
+    from astrotoyz import detect_sources
+    from astrotoyz import io
+    from astrotoyz import data_types
+    from astrotoyz import config
